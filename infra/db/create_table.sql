@@ -1,0 +1,14 @@
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE
+
+CREATE TABLE measure (
+    time TIMESTAMPTZ NOT NULL,
+    temp_ds18b20_1 DOUBLE PRECISION NULL,
+    temp_ds18b20_0 DOUBLE PRECISION NULL,
+    hdc_1080_hum DOUBLE PRECISION NULL,
+    hdc_1080_temp DOUBLE PRECISION NULL,
+    bmp280_temp DOUBLE PRECISION NULL,
+    bmp280_pressure DOUBLE PRECISION NULL,
+    altitude DOUBLE PRECISION NULL
+)
+
+SELECT create_hypertable('measure', 'time')
