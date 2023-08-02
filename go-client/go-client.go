@@ -25,40 +25,6 @@ type SampleSt struct {
 	Timestamp      float64 `json:"timestamp"`
 }
 
-func create_table() {
-	user := os.Getenv("PG_USER")
-	password := os.Getenv("PG_PASS")
-	host := os.Getenv("PG_HOST")
-	dbname := os.Getenv("PG_DB")
-
-	psqlconn := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable", host, user, password, dbname)
-
-	db, _ := sql.Open("postgres", psqlconn)
-
-	q := `
-	CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
-
-	CREATE TABLE IF NOT EXISTS measure (
-		time TIMESTAMPTZ NOT NULL,
-		temp_ds18b20_1 DOUBLE PRECISION NULL,
-		temp_ds18b20_0 DOUBLE PRECISION NULL,
-		hdc_1080_hum DOUBLE PRECISION NULL,
-		hdc_1080_temp DOUBLE PRECISION NULL,
-		bmp280_temp DOUBLE PRECISION NULL,
-		bmp280_pressure DOUBLE PRECISION NULL,
-		altitude DOUBLE PRECISION NULL
-	);
-	SELECT CREATE_HYPERTABLE IF NOT EXISTS('measure', 'time');
-	`
-
-	_, err := db.Exec(q)
-	if err != nil {
-		fmt.Println("Error can't create table", err)
-	} else {
-		fmt.Println("Table Okay")
-	}
-}
-
 func insert_data_in_db(sample SampleSt) {
 	user := os.Getenv("PG_USER")
 	password := os.Getenv("PG_PASS")
@@ -123,8 +89,6 @@ func try_run() error {
 	}
 
 	topic := "wheater/sample"
-
-	create_table()
 
 	opts := createClientOptions("sub", uri)
 	client := mqtt.NewClient(opts)
