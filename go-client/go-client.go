@@ -15,8 +15,11 @@ import (
 )
 
 type SampleSt struct {
-	TempDs18B201   float64 `json:"temp_ds18b20_1"`
 	TempDs18B200   float64 `json:"temp_ds18b20_0"`
+	TempDs18B201   float64 `json:"temp_ds18b20_1"`
+	TempDs18B202   float64 `json:"temp_ds18b20_2"`
+	TempDs18B203   float64 `json:"temp_ds18b20_3"`
+	Rssi           int8    `json:"rssi"`
 	Hdc1080Hum     float64 `json:"hdc_1080_hum"`
 	Hdc1080Temp    float64 `json:"hdc_1080_temp"`
 	Bmp280Temp     float64 `json:"bmp280_temp"`
@@ -41,35 +44,77 @@ func insert_data_in_db(sample SampleSt) {
 	defer db.Close()
 
 	time := time.UnixMilli(int64(sample.Timestamp * 1000))
+	if sample.Rssi != 0 {
+		const insertStmt = `
+		INSERT INTO measure(
+			time,
+			temp_ds18b20_0,
+			temp_ds18b20_1,
+			temp_ds18b20_2,
+			temp_ds18b20_3,
+			hdc_1080_hum,
+			hdc_1080_temp,
+			bmp280_temp,
+			bmp280_pressure,
+			altitude,
+			rssi
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+		`
 
-	const insertStmt = `
-INSERT INTO measure(
-	time,
-	temp_ds18b20_0,
-	temp_ds18b20_1,
-	hdc_1080_hum,
-	hdc_1080_temp,
-	bmp280_temp,
-	bmp280_pressure,
-	altitude
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
-`
-	fmt.Println(insertStmt, "as")
-	res, qerr := db.Query(insertStmt,
-		time,
-		sample.TempDs18B200,
-		sample.TempDs18B201,
-		sample.Hdc1080Hum,
-		sample.Hdc1080Temp,
-		sample.Bmp280Temp,
-		sample.Bmp280Pressure,
-		sample.Altitude)
+		_, qerr := db.Query(insertStmt,
+			time,
+			sample.TempDs18B200,
+			sample.TempDs18B201,
+			sample.TempDs18B202,
+			sample.TempDs18B203,
+			sample.Hdc1080Hum,
+			sample.Hdc1080Temp,
+			sample.Bmp280Temp,
+			sample.Bmp280Pressure,
+			sample.Altitude,
+			sample.Rssi,
+		)
 
-	if qerr != nil {
-		fmt.Printf("Sql Query fail:%s\n", qerr)
+		if qerr == nil {
+			fmt.Printf("Add data to Pg: Time:%s Sample:%s\n", time, sample)
+		} else {
+			fmt.Printf("Sql Query fail:%s\n", qerr)
+		}
+	} else {
+		const insertStmt = `
+		INSERT INTO measure(
+			time,
+			temp_ds18b20_0,
+			temp_ds18b20_1,
+			temp_ds18b20_2,
+			temp_ds18b20_3,
+			hdc_1080_hum,
+			hdc_1080_temp,
+			bmp280_temp,
+			bmp280_pressure,
+			altitude
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+		`
+
+		_, qerr := db.Query(insertStmt,
+			time,
+			sample.TempDs18B200,
+			sample.TempDs18B201,
+			sample.TempDs18B202,
+			sample.TempDs18B203,
+			sample.Hdc1080Hum,
+			sample.Hdc1080Temp,
+			sample.Bmp280Temp,
+			sample.Bmp280Pressure,
+			sample.Altitude,
+		)
+
+		if qerr != nil {
+			fmt.Printf("Sql Query fail:%s\n", qerr)
+		} else {
+			fmt.Printf("Add sample No RSSI:%s\n", sample)
+		}
 	}
-
-	fmt.Println("Add data to Pg:", res)
 }
 
 func createClientOptions(clientId string, uri *url.URL) *mqtt.ClientOptions {
@@ -101,6 +146,8 @@ func try_run() error {
 
 	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		data := SampleSt{}
+
+		data.Rssi = 0
 
 		unmarshal_err := json.Unmarshal(msg.Payload(), &data)
 		if unmarshal_err != nil {
