@@ -20,6 +20,7 @@ type SampleSt struct {
 	TempDs18B202   float64 `json:"temp_ds18b20_2"`
 	TempDs18B203   float64 `json:"temp_ds18b20_3"`
 	Rssi           int8    `json:"rssi"`
+	Power_supply   int32   `json:"power_supply"`
 	Hdc1080Hum     float64 `json:"hdc_1080_hum"`
 	Hdc1080Temp    float64 `json:"hdc_1080_temp"`
 	Bmp280Temp     float64 `json:"bmp280_temp"`
@@ -57,8 +58,9 @@ func insert_data_in_db(sample SampleSt) {
 			bmp280_temp,
 			bmp280_pressure,
 			altitude,
-			rssi
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+			rssi,
+			power_supply
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 		`
 
 		_, qerr := db.Query(insertStmt,
@@ -73,10 +75,11 @@ func insert_data_in_db(sample SampleSt) {
 			sample.Bmp280Pressure,
 			sample.Altitude,
 			sample.Rssi,
+			sample.Power_supply,
 		)
 
 		if qerr == nil {
-			fmt.Printf("Add data to Pg: Time:%s Sample:%s\n", time, sample)
+			fmt.Printf("Add data to Pg: Sample:%v\n", sample)
 		} else {
 			fmt.Printf("Sql Query fail:%s\n", qerr)
 		}
@@ -92,8 +95,9 @@ func insert_data_in_db(sample SampleSt) {
 			hdc_1080_temp,
 			bmp280_temp,
 			bmp280_pressure,
-			altitude
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+			altitude,
+			power_supply
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 		`
 
 		_, qerr := db.Query(insertStmt,
@@ -107,12 +111,13 @@ func insert_data_in_db(sample SampleSt) {
 			sample.Bmp280Temp,
 			sample.Bmp280Pressure,
 			sample.Altitude,
+			sample.Power_supply,
 		)
 
 		if qerr != nil {
 			fmt.Printf("Sql Query fail:%s\n", qerr)
 		} else {
-			fmt.Printf("Add sample No RSSI:%s\n", sample)
+			fmt.Printf("Add sample No RSSI:%v\n", sample)
 		}
 	}
 }
