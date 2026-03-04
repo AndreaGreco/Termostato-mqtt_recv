@@ -1,0 +1,13 @@
+database:
+  user: termostato
+  password: IkyipShoownAd2
+  host: timescaledb
+  dbname: termostato
+  port: 5432
+
+mqtt:
+  host: "mosquitto"
+  port: 1885
+
+measureTopic: termostato/sample
+OpenThermTopic: termostato/opentherm

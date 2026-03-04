@@ -1,177 +1,70 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/url"
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	_ "github.com/lib/pq"
-
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-type SampleSt struct {
-	TempDs18B200   float64 `json:"temp_ds18b20_0"`
-	TempDs18B201   float64 `json:"temp_ds18b20_1"`
-	TempDs18B202   float64 `json:"temp_ds18b20_2"`
-	TempDs18B203   float64 `json:"temp_ds18b20_3"`
-	Rssi           int8    `json:"rssi"`
-	Power_supply   int32   `json:"power_supply"`
-	Hdc1080Hum     float64 `json:"hdc_1080_hum"`
-	Hdc1080Temp    float64 `json:"hdc_1080_temp"`
-	Bmp280Temp     float64 `json:"bmp280_temp"`
-	Bmp280Pressure float64 `json:"bmp280_pressure"`
-	Altitude       int     `json:"altitude"`
-	Timestamp      float64 `json:"timestamp"`
-}
+func main() {
+	// Configura zerolog per output human-friendly
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-func insert_data_in_db(sample SampleSt) {
-	user := os.Getenv("PG_USER")
-	password := os.Getenv("PG_PASS")
-	host := os.Getenv("PG_HOST")
-	dbname := os.Getenv("PG_DB")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	psqlconn := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable", host, user, password, dbname)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	db, err := sql.Open("postgres", psqlconn)
+	log.Info().Msg("Starting Termostato MQTT client...")
+
+	// Carica la configurazione
+	config, err := LoadConfig()
 	if err != nil {
-		fmt.Printf("Sql open fail:%s\n", err)
-		return
+		log.Fatal().Err(err).Msg("Failed to load config")
+	}
+
+	// Connetti al database
+	log.Info().Msg("Connecting to database...")
+	db, err := NewDatabase(ctx, &config.Db)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	defer db.Close()
 
-	time := time.UnixMilli(int64(sample.Timestamp * 1000))
-	if sample.Rssi != 0 {
-		const insertStmt = `
-		INSERT INTO measure(
-			time,
-			temp_ds18b20_0,
-			temp_ds18b20_1,
-			temp_ds18b20_2,
-			temp_ds18b20_3,
-			hdc_1080_hum,
-			hdc_1080_temp,
-			bmp280_temp,
-			bmp280_pressure,
-			altitude,
-			rssi,
-			power_supply
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
-		`
-
-		_, qerr := db.Query(insertStmt,
-			time,
-			sample.TempDs18B200,
-			sample.TempDs18B201,
-			sample.TempDs18B202,
-			sample.TempDs18B203,
-			sample.Hdc1080Hum,
-			sample.Hdc1080Temp,
-			sample.Bmp280Temp,
-			sample.Bmp280Pressure,
-			sample.Altitude,
-			sample.Rssi,
-			sample.Power_supply,
-		)
-
-		if qerr == nil {
-			fmt.Printf("Add data to Pg: Sample:%v\n", sample)
-		} else {
-			fmt.Printf("Sql Query fail:%s\n", qerr)
-		}
-	} else {
-		const insertStmt = `
-		INSERT INTO measure(
-			time,
-			temp_ds18b20_0,
-			temp_ds18b20_1,
-			temp_ds18b20_2,
-			temp_ds18b20_3,
-			hdc_1080_hum,
-			hdc_1080_temp,
-			bmp280_temp,
-			bmp280_pressure,
-			altitude,
-			power_supply
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
-		`
-
-		_, qerr := db.Query(insertStmt,
-			time,
-			sample.TempDs18B200,
-			sample.TempDs18B201,
-			sample.TempDs18B202,
-			sample.TempDs18B203,
-			sample.Hdc1080Hum,
-			sample.Hdc1080Temp,
-			sample.Bmp280Temp,
-			sample.Bmp280Pressure,
-			sample.Altitude,
-			sample.Power_supply,
-		)
-
-		if qerr != nil {
-			fmt.Printf("Sql Query fail:%s\n", qerr)
-		} else {
-			fmt.Printf("Add sample No RSSI:%v\n", sample)
-		}
+	// Configura il client MQTT
+	log.Info().Msg("Setting up MQTT client...")
+	topics := &TopicConfig{
+		MeasureTopic:   config.MeasureTopic,
+		OpenThermTopic: config.OpenThermTopic,
 	}
-}
+	mqttClient := NewMQTTClient(&config.Mqtt, topics, db)
 
-func createClientOptions(clientId string, uri *url.URL) *mqtt.ClientOptions {
-	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s", uri.Host))
-	opts.SetUsername(uri.User.Username())
-	password, _ := uri.User.Password()
-	opts.SetPassword(password)
-	opts.SetClientID(clientId)
-	return opts
-}
-
-func try_run() error {
-	uri, err := url.Parse(os.Getenv("MQTT_URI"))
-	if err != nil {
-		log.Fatal(err)
+	if err := mqttClient.Connect(ctx); err != nil {
+		log.Fatal().Err(err).Msg("Failed to setup MQTT client")
 	}
+	defer mqttClient.Disconnect()
 
-	topic := "wheater/sample"
+	log.Info().Msg("System ready. Waiting for messages...")
 
-	opts := createClientOptions("sub", uri)
-	client := mqtt.NewClient(opts)
-	token := client.Connect()
-	for !token.WaitTimeout(3 * time.Second) {
-	}
-	if err := token.Error(); err != nil {
-		return err
-	}
+	// Attendi segnale di terminazione
+	sig := <-sigs
+	log.Info().
+		Str("signal", sig.String()).
+		Msg("Received signal, shutting down gracefully...")
 
-	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		data := SampleSt{}
+	cancel()
 
-		data.Rssi = 0
+	// Tempo per la chiusura pulita
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
 
-		unmarshal_err := json.Unmarshal(msg.Payload(), &data)
-		if unmarshal_err != nil {
-			fmt.Printf("UnMarshall error! %s\n", unmarshal_err)
-		}
+	<-shutdownCtx.Done()
 
-		insert_data_in_db(data)
-	})
-
-	/* Wait messagges */
-	for {
-		time.Sleep(1000)
-	}
-}
-
-func main() {
-	for {
-		err := try_run()
-		fmt.Println("Error", err)
-		time.Sleep(1000)
-	}
+	log.Info().Msg("Shutdown complete")
 }

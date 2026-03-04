@@ -1,14 +1,38 @@
-version: '3.8'
-
 services:
+  thermopro-import:
+    build: termalpro-import/
+    environment:
+      - PG_DB=termostato
+      - PG_USER=termostato
+      - PG_PASS=IkyipShoownAd2
+      - PG_HOST=timescaledb
+      - PG_PORT=5432
+      - SENSOR_ID=TP357S
+    volumes:
+      - .:/data
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - meteo-station
+    restart: "no"
+
   mqttclient:
     build: go-client/
     environment:
-      - PG_DB=meteo_station
-      - PG_USER=meteo_station
+      - PG_DB=termostato
+      - PG_USER=termostato
       - PG_PASS=IkyipShoownAd2
       - PG_HOST=timescaledb
-      - MQTT_URI=mqtt://mosquitto:1883
+      - PG_PORT=5432
+      - MQTT_URI=mqtt://mosquitto:1885
+    volumes:
+      - ./go-client/init_existing_db.sql:/app/init_existing_db.sql:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
     networks:
       - meteo-station
 
@@ -22,43 +46,49 @@ services:
     - "./infra/mosquitto/log:/mosquitto/log"
     - "./infra/mosquitto/data/:/mosquitto/data"
     ports:
-    - "1883:1883"
+    - "1885:1885"
 
   timescaledb:
-    image: timescale/timescaledb:latest-pg15
-    command: postgres -c shared_preload_libraries=timescaledb
+    image: timescale/timescaledb:latest-pg16
     networks:
       - meteo-station
     ports:
-      - "5432:5432"
+      - "5435:5432"
     environment:
-      - PGDATA=/var/lib/postgresql/data/timescaledb
-      - POSTGRES_DB=meteo_station
-      - POSTGRES_USER=meteo_station
+      - POSTGRES_DB=termostato
+      - POSTGRES_USER=termostato
       - POSTGRES_PASSWORD=IkyipShoownAd2
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./infra/db/:/docker-entrypoint-initdb.d/
+      - term_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U termostato"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   grafana:
-    image: grafana/grafana:10.0.2
+    image: grafana/grafana:latest
+    container_name: grafana
     networks:
       - meteo-station
     ports:
       - "3000:3000"
     environment:
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_BASIC_ENABLED=false
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
     volumes:
-      - grafana-data:/var/lib/grafana
+      - term_grafana:/var/lib/grafana
+    depends_on:
+      timescaledb:
+        condition: service_healthy
 
 networks:
   meteo-station:
     name: meteo-station
 
 volumes:
-  postgres-data:
+  term_pgdata:
     driver: local
-  grafana-data:
+  term_grafana:
     driver: local

@@ -1,0 +1,88 @@
+# Migrazioni con Tern
+
+Il progetto ora utilizza [Tern](https://github.com/jackc/tern) per la gestione delle migrazioni del database.
+
+## Struttura
+
+- `migrations/` - Directory contenente tutti i file di migrazione
+- `tern.conf` - File di configurazione per Tern
+- `init_existing_db.sql` - Script per inizializzare Tern su database esistenti
+
+## Setup per Database Esistente
+
+Se hai già un database con lo schema aggiornato, **esegui prima questo comando**:
+
+```bash
+docker compose exec timescaledb psql -U termostato -d termostato -f /app/init_existing_db.sql
+```
+
+Oppure, se il database non è ancora in un container:
+
+```bash
+psql -h localhost -p 5435 -U termostato -d termostato < go-client/init_existing_db.sql
+```
+
+Questo inizializza la tabella `schema_version` di Tern marcando tutte le migrazioni come già applicate.
+
+## Migrazioni Disponibili
+
+1. **001_initial_schema.sql** - Crea lo schema iniziale (timescaledb, tabelle measure e opentherm)
+2. **002_convert_temp_types.sql** - Converte i tipi delle colonne temperature a DOUBLE PRECISION
+3. **003_add_opentherm_columns_to_measure.sql** - Aggiunge colonne OpenTherm alla tabella measure
+4. **004_add_power_column.sql** - Aggiunge la colonna Power alla tabella measure
+
+## Esecuzione Automatica
+
+Le migrazioni vengono eseguite automaticamente all'avvio del container `mqttclient`:
+- Il container attende che il database sia pronto
+- Esegue tutte le migrazioni pendenti usando Tern
+- Avvia l'applicazione
+
+## Comandi Utili
+
+### Eseguire le migrazioni manualmente
+```bash
+docker compose exec mqttclient tern migrate -c /app/tern.conf -m /app/migrations
+```
+
+### Verificare lo stato delle migrazioni
+```bash
+docker compose exec mqttclient tern status -c /app/tern.conf -m /app/migrations
+```
+
+### Creare una nuova migrazione localmente
+```bash
+cd go-client
+tern new -m migrations nome_migrazione
+```
+
+### Rollback dell'ultima migrazione (usare con cautela)
+```bash
+docker compose exec mqttclient tern migrate -c /app/tern.conf -m /app/migrations -d -1
+```
+
+## Formato delle Migrazioni
+
+Ogni file di migrazione ha due sezioni separate da `---- create above / drop below ----`:
+
+- **Sezione superiore**: Comandi SQL eseguiti durante la migrazione (migrate up)
+- **Sezione inferiore**: Comandi SQL eseguiti durante il rollback (migrate down)
+
+Esempio:
+```sql
+-- Descrizione della migrazione
+-- Migration XXX
+
+ALTER TABLE measure ADD COLUMN new_column TEXT;
+
+---- create above / drop below ----
+
+ALTER TABLE measure DROP COLUMN new_column;
+```
+
+## Note Importanti
+
+- Le migrazioni vengono applicate in ordine numerico
+- Tern tiene traccia delle migrazioni eseguite nella tabella `schema_version`
+- Non modificare mai una migrazione già applicata in produzione
+- Per nuove modifiche, crea sempre una nuova migrazione
