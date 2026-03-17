@@ -21,20 +21,52 @@ INSERT INTO opentherm (
     "flameOn",
     "heatingOn",
     "dhwOn",
+    "returnWaterTemp",
+    "chWaterPressure",
+    "outsideTemperature",
+    "exhaustTemperature",
+    "heatExchangerTemperature",
+    "faultFlags",
+    "oemFaultCode",
+    "oemDiagnostic",
+    "maxBoilerCapacityKw",
+    "minModulationLevel",
+    "burnerStarts",
+    "burnerOperationHours",
+    "chPumpStarts",
+    "chPumpOperationHours",
+    "dhwBurnerStarts",
+    "dhwBurnerOperationHours",
     "time"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 `
 
 type InsertOpenThermParams struct {
-	HeatingWaterTempRead float64          `json:"heatingWaterTempRead"`
-	HeatingSetpointRead  float64          `json:"heatingSetpointRead"`
-	ModulationLvl        float64          `json:"modulationLvl"`
-	DhwTemperature       float64          `json:"dhwTemperature"`
-	DhwSetpoint          float64          `json:"dhwSetpoint"`
-	FlameOn              bool             `json:"flameOn"`
-	HeatingOn            bool             `json:"heatingOn"`
-	DhwOn                bool             `json:"dhwOn"`
-	Time                 pgtype.Timestamp `json:"time"`
+	HeatingWaterTempRead     float64          `json:"heatingWaterTempRead"`
+	HeatingSetpointRead      float64          `json:"heatingSetpointRead"`
+	ModulationLvl            float64          `json:"modulationLvl"`
+	DhwTemperature           float64          `json:"dhwTemperature"`
+	DhwSetpoint              float64          `json:"dhwSetpoint"`
+	FlameOn                  bool             `json:"flameOn"`
+	HeatingOn                bool             `json:"heatingOn"`
+	DhwOn                    bool             `json:"dhwOn"`
+	ReturnWaterTemp          float64          `json:"returnWaterTemp"`
+	ChWaterPressure          float64          `json:"chWaterPressure"`
+	OutsideTemperature       float64          `json:"outsideTemperature"`
+	ExhaustTemperature       float64          `json:"exhaustTemperature"`
+	HeatExchangerTemperature float64          `json:"heatExchangerTemperature"`
+	FaultFlags               int32            `json:"faultFlags"`
+	OemFaultCode             int32            `json:"oemFaultCode"`
+	OemDiagnostic            int32            `json:"oemDiagnostic"`
+	MaxBoilerCapacityKw      int32            `json:"maxBoilerCapacityKw"`
+	MinModulationLevel       int32            `json:"minModulationLevel"`
+	BurnerStarts             int32            `json:"burnerStarts"`
+	BurnerOperationHours     int32            `json:"burnerOperationHours"`
+	ChPumpStarts             int32            `json:"chPumpStarts"`
+	ChPumpOperationHours     int32            `json:"chPumpOperationHours"`
+	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
+	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
+	Time                     pgtype.Timestamp `json:"time"`
 }
 
 func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams) error {
@@ -47,6 +79,22 @@ func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams
 		arg.FlameOn,
 		arg.HeatingOn,
 		arg.DhwOn,
+		arg.ReturnWaterTemp,
+		arg.ChWaterPressure,
+		arg.OutsideTemperature,
+		arg.ExhaustTemperature,
+		arg.HeatExchangerTemperature,
+		arg.FaultFlags,
+		arg.OemFaultCode,
+		arg.OemDiagnostic,
+		arg.MaxBoilerCapacityKw,
+		arg.MinModulationLevel,
+		arg.BurnerStarts,
+		arg.BurnerOperationHours,
+		arg.ChPumpStarts,
+		arg.ChPumpOperationHours,
+		arg.DhwBurnerStarts,
+		arg.DhwBurnerOperationHours,
 		arg.Time,
 	)
 	return err

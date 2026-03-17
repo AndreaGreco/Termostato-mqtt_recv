@@ -17,6 +17,22 @@ services:
       - meteo-station
     restart: "no"
 
+  migrate:
+    build: go-client/
+    entrypoint: ["tern", "migrate", "-c", "/app/tern.conf", "-m", "/app/migrations"]
+    environment:
+      - PG_DB=termostato
+      - PG_USER=termostato
+      - PG_PASS=IkyipShoownAd2
+      - PG_HOST=timescaledb
+      - PG_PORT=5432
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - meteo-station
+    restart: "no"
+
   mqttclient:
     build: go-client/
     environment:
@@ -33,6 +49,8 @@ services:
         condition: service_healthy
       mosquitto:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
     networks:
       - meteo-station
 

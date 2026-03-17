@@ -27,14 +27,30 @@ type Measure struct {
 }
 
 type Opentherm struct {
-	ID                   int32            `json:"id"`
-	HeatingWaterTempRead float64          `json:"heatingWaterTempRead"`
-	HeatingSetpointRead  float64          `json:"heatingSetpointRead"`
-	ModulationLvl        float64          `json:"modulationLvl"`
-	DhwTemperature       float64          `json:"dhwTemperature"`
-	DhwSetpoint          float64          `json:"dhwSetpoint"`
-	FlameOn              bool             `json:"flameOn"`
-	HeatingOn            bool             `json:"heatingOn"`
-	DhwOn                bool             `json:"dhwOn"`
-	Time                 pgtype.Timestamp `json:"time"`
+	ID                       int32            `json:"id"`
+	HeatingWaterTempRead     float64          `json:"heatingWaterTempRead"`
+	HeatingSetpointRead      float64          `json:"heatingSetpointRead"`
+	ModulationLvl            float64          `json:"modulationLvl"`
+	DhwTemperature           float64          `json:"dhwTemperature"`
+	DhwSetpoint              float64          `json:"dhwSetpoint"`
+	FlameOn                  bool             `json:"flameOn"`
+	HeatingOn                bool             `json:"heatingOn"`
+	DhwOn                    bool             `json:"dhwOn"`
+	ReturnWaterTemp          float64          `json:"returnWaterTemp"`
+	ChWaterPressure          float64          `json:"chWaterPressure"`
+	OutsideTemperature       float64          `json:"outsideTemperature"`
+	ExhaustTemperature       float64          `json:"exhaustTemperature"`
+	HeatExchangerTemperature float64          `json:"heatExchangerTemperature"`
+	FaultFlags               int32            `json:"faultFlags"`
+	OemFaultCode             int32            `json:"oemFaultCode"`
+	OemDiagnostic            int32            `json:"oemDiagnostic"`
+	MaxBoilerCapacityKw      int32            `json:"maxBoilerCapacityKw"`
+	MinModulationLevel       int32            `json:"minModulationLevel"`
+	BurnerStarts             int32            `json:"burnerStarts"`
+	BurnerOperationHours     int32            `json:"burnerOperationHours"`
+	ChPumpStarts             int32            `json:"chPumpStarts"`
+	ChPumpOperationHours     int32            `json:"chPumpOperationHours"`
+	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
+	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
+	Time                     pgtype.Timestamp `json:"time"`
 }

@@ -1,0 +1,40 @@
+-- Add missing OpenTherm columns to opentherm table
+-- Migration 007
+
+ALTER TABLE "opentherm"
+ADD COLUMN "returnWaterTemp" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "chWaterPressure" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "outsideTemperature" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "exhaustTemperature" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "heatExchangerTemperature" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "faultFlags" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "oemFaultCode" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "oemDiagnostic" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "maxBoilerCapacityKw" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "minModulationLevel" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "burnerStarts" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "burnerOperationHours" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "chPumpStarts" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "chPumpOperationHours" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "dhwBurnerStarts" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "dhwBurnerOperationHours" INTEGER NOT NULL DEFAULT 0;
+
+---- create above / drop below ----
+
+ALTER TABLE "opentherm"
+DROP COLUMN IF EXISTS "dhwBurnerOperationHours",
+DROP COLUMN IF EXISTS "dhwBurnerStarts",
+DROP COLUMN IF EXISTS "chPumpOperationHours",
+DROP COLUMN IF EXISTS "chPumpStarts",
+DROP COLUMN IF EXISTS "burnerOperationHours",
+DROP COLUMN IF EXISTS "burnerStarts",
+DROP COLUMN IF EXISTS "minModulationLevel",
+DROP COLUMN IF EXISTS "maxBoilerCapacityKw",
+DROP COLUMN IF EXISTS "oemDiagnostic",
+DROP COLUMN IF EXISTS "oemFaultCode",
+DROP COLUMN IF EXISTS "faultFlags",
+DROP COLUMN IF EXISTS "heatExchangerTemperature",
+DROP COLUMN IF EXISTS "exhaustTemperature",
+DROP COLUMN IF EXISTS "outsideTemperature",
+DROP COLUMN IF EXISTS "chWaterPressure",
+DROP COLUMN IF EXISTS "returnWaterTemp";

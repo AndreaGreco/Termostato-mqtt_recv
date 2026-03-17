@@ -29,6 +29,26 @@ type OtDataSt struct {
 	FlameOn              bool    `json:"flame_on"`
 	HeatingOn            bool    `json:"heating_on"`
 	DhwOn                bool    `json:"dhw_on"`
+	// Sensor & Informational
+	ReturnWaterTemp          float64 `json:"return_water_temp"`
+	ChWaterPressure          float64 `json:"ch_water_pressure"`
+	OutsideTemperature       float64 `json:"outside_temperature"`
+	ExhaustTemperature       float64 `json:"exhaust_temperature"`
+	HeatExchangerTemperature float64 `json:"heat_exchanger_temperature"`
+	// Fault & Diagnostics
+	FaultFlags    int `json:"fault_flags"`
+	OemFaultCode  int `json:"oem_fault_code"`
+	OemDiagnostic int `json:"oem_diagnostic"`
+	// Boiler capacity
+	MaxBoilerCapacityKw int `json:"max_boiler_capacity_kw"`
+	MinModulationLevel  int `json:"min_modulation_level"`
+	// Operating hours & starts
+	BurnerStarts            int `json:"burner_starts"`
+	BurnerOperationHours    int `json:"burner_operation_hours"`
+	ChPumpStarts            int `json:"ch_pump_starts"`
+	ChPumpOperationHours    int `json:"ch_pump_operation_hours"`
+	DhwBurnerStarts         int `json:"dhw_burner_starts"`
+	DhwBurnerOperationHours int `json:"dhw_burner_operation_hours"`
 }
 
 // DatabaseConfig contiene la configurazione del database

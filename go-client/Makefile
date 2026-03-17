@@ -6,6 +6,8 @@ help: ## Mostra questo help
 sqlc: ## Genera codice da sqlc
 	~/go/bin/sqlc generate
 
+generate: sqlc build ## Rigenera sqlc e compila
+
 build: ## Compila il progetto
 	go build -o mqtt_client
 
