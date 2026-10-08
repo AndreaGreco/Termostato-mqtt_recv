@@ -8,6 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Log struct {
+	ID   int64            `json:"id"`
+	Time pgtype.Timestamp `json:"time"`
+	Task string           `json:"task"`
+	Msg  string           `json:"msg"`
+}
+
 type Measure struct {
 	ID               int32            `json:"id"`
 	AmbTemp          float64          `json:"AmbTemp"`

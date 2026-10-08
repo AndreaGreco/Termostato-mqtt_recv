@@ -11,3 +11,4 @@ mqtt:
 
 measureTopic: termostato/sample
 OpenThermTopic: termostato/opentherm
+logTopic: termostato/logs

@@ -23,6 +23,7 @@ type MQTTClient struct {
 type TopicConfig struct {
 	MeasureTopic   string
 	OpenThermTopic string
+	LogTopic       string
 }
 
 // NewMQTTClient crea un nuovo client MQTT
@@ -93,6 +94,11 @@ func (mc *MQTTClient) Connect(ctx context.Context) error {
 
 	// Subscribe to OpenTherm topic
 	if err := mc.subscribeOpenThermTopic(); err != nil {
+		return err
+	}
+
+	// Subscribe to log topic
+	if err := mc.subscribeLogTopic(); err != nil {
 		return err
 	}
 
@@ -169,6 +175,43 @@ func (mc *MQTTClient) subscribeOpenThermTopic() error {
 
 	if err := token.Error(); err != nil {
 		return fmt.Errorf("failed to subscribe to %s: %w", mc.topics.OpenThermTopic, err)
+	}
+
+	return nil
+}
+
+// subscribeLogTopic sottoscrive il topic dei log ESP32
+func (mc *MQTTClient) subscribeLogTopic() error {
+	log.Info().
+		Str("topic", mc.topics.LogTopic).
+		Msg("Subscribing to log topic")
+
+	token := mc.client.Subscribe(mc.topics.LogTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
+		var data EspLogSt
+		if err := json.Unmarshal(msg.Payload(), &data); err != nil {
+			log.Error().
+				Err(err).
+				Str("topic", msg.Topic()).
+				Msg("Failed to unmarshal log data")
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := mc.db.InsertLog(ctx, data); err != nil {
+			log.Error().
+				Err(err).
+				Msg("Failed to insert log")
+		}
+	})
+
+	if !token.WaitTimeout(5 * time.Second) {
+		return fmt.Errorf("subscribe to %s timeout", mc.topics.LogTopic)
+	}
+
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("failed to subscribe to %s: %w", mc.topics.LogTopic, err)
 	}
 
 	return nil

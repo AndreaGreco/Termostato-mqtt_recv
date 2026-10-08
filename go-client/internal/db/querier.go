@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	InsertLog(ctx context.Context, arg InsertLogParams) error
 	InsertMeasure(ctx context.Context, arg InsertMeasureParams) error
 	InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams) error
 }

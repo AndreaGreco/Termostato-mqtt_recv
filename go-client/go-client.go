@@ -42,6 +42,7 @@ func main() {
 	topics := &TopicConfig{
 		MeasureTopic:   config.MeasureTopic,
 		OpenThermTopic: config.OpenThermTopic,
+		LogTopic:       config.LogTopic,
 	}
 	mqttClient := NewMQTTClient(&config.Mqtt, topics, db)
 

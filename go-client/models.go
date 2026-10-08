@@ -51,6 +51,13 @@ type OtDataSt struct {
 	DhwBurnerOperationHours int `json:"dhw_burner_operation_hours"`
 }
 
+// EspLogSt rappresenta un messaggio di log dell'ESP32
+type EspLogSt struct {
+	Timestamp float64 `json:"t"`
+	Task      string  `json:"task"`
+	Msg       string  `json:"msg"`
+}
+
 // DatabaseConfig contiene la configurazione del database
 type DatabaseConfig struct {
 	User     string `yaml:"user"`
@@ -74,4 +81,5 @@ type Config struct {
 	Mqtt           MqttConfig     `yaml:"mqtt"`
 	MeasureTopic   string         `yaml:"measureTopic"`
 	OpenThermTopic string         `yaml:"OpenThermTopic"`
+	LogTopic       string         `yaml:"logTopic"`
 }

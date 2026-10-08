@@ -186,3 +186,24 @@ func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error
 		Msg("Inserted OpenTherm data")
 	return nil
 }
+
+// InsertLog inserisce un messaggio di log ESP32 nel database
+func (d *Database) InsertLog(ctx context.Context, entry EspLogSt) error {
+	logTime := time.UnixMilli(int64(entry.Timestamp * 1000))
+
+	params := db.InsertLogParams{
+		Time: pgtype.Timestamp{Time: logTime, Valid: true},
+		Task: entry.Task,
+		Msg:  entry.Msg,
+	}
+
+	if err := d.queries.InsertLog(ctx, params); err != nil {
+		return fmt.Errorf("failed to insert log: %w", err)
+	}
+
+	log.Debug().
+		Str("task", entry.Task).
+		Str("msg", entry.Msg).
+		Msg("Inserted log entry")
+	return nil
+}

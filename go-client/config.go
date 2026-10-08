@@ -70,6 +70,11 @@ func LoadConfig() (*Config, error) {
 		valid = false
 	}
 
+	if config.LogTopic == "" {
+		log.Error().Msg("MQTT log topic not found in config")
+		valid = false
+	}
+
 	// Check if valid
 	if !valid {
 		log.Fatal().Msg("Config is not valid")
