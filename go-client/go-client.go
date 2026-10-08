@@ -49,9 +49,8 @@ func main() {
 	// Configura il client MQTT
 	log.Info().Msg("Setting up MQTT client...")
 	topics := &TopicConfig{
-		MeasureTopic:   config.MeasureTopic,
-		OpenThermTopic: config.OpenThermTopic,
-		LogTopic:       config.LogTopic,
+		Prefix: config.TopicPrefix,
+		Legacy: *config.LegacyTopics,
 	}
 	mqttClient := NewMQTTClient(&config.Mqtt, topics, db)
 

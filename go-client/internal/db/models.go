@@ -8,11 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Device struct {
+	ID        string           `json:"id"`
+	Name      *string          `json:"name"`
+	Hostname  *string          `json:"hostname"`
+	Ip        *string          `json:"ip"`
+	FwVersion *string          `json:"fw_version"`
+	Partition *string          `json:"partition"`
+	Online    bool             `json:"online"`
+	LastSeen  pgtype.Timestamp `json:"last_seen"`
+}
+
 type Log struct {
-	ID   int64            `json:"id"`
-	Time pgtype.Timestamp `json:"time"`
-	Task string           `json:"task"`
-	Msg  string           `json:"msg"`
+	ID     int64            `json:"id"`
+	Time   pgtype.Timestamp `json:"time"`
+	Task   string           `json:"task"`
+	Msg    string           `json:"msg"`
+	Device string           `json:"device"`
 }
 
 type Measure struct {
@@ -30,6 +42,7 @@ type Measure struct {
 	HeapFree         int32            `json:"heap_free"`
 	HeapLargestBlock int32            `json:"heap_largest_block"`
 	BootCount        int32            `json:"boot_count"`
+	Device           string           `json:"device"`
 	Time             pgtype.Timestamp `json:"time"`
 }
 
@@ -59,5 +72,6 @@ type Opentherm struct {
 	ChPumpOperationHours     int32            `json:"chPumpOperationHours"`
 	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
 	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
+	Device                   string           `json:"device"`
 	Time                     pgtype.Timestamp `json:"time"`
 }

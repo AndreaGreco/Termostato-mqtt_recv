@@ -15,17 +15,24 @@ const insertLog = `-- name: InsertLog :exec
 INSERT INTO "logs" (
     "time",
     "task",
-    "msg"
-) VALUES ($1, $2, $3)
+    "msg",
+    "device"
+) VALUES ($1, $2, $3, $4)
 `
 
 type InsertLogParams struct {
-	Time pgtype.Timestamp `json:"time"`
-	Task string           `json:"task"`
-	Msg  string           `json:"msg"`
+	Time   pgtype.Timestamp `json:"time"`
+	Task   string           `json:"task"`
+	Msg    string           `json:"msg"`
+	Device string           `json:"device"`
 }
 
 func (q *Queries) InsertLog(ctx context.Context, arg InsertLogParams) error {
-	_, err := q.db.Exec(ctx, insertLog, arg.Time, arg.Task, arg.Msg)
+	_, err := q.db.Exec(ctx, insertLog,
+		arg.Time,
+		arg.Task,
+		arg.Msg,
+		arg.Device,
+	)
 	return err
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -19,11 +20,10 @@ type MQTTClient struct {
 	topics *TopicConfig
 }
 
-// TopicConfig contiene i topic MQTT da sottoscrivere
+// TopicConfig contiene la configurazione dei topic MQTT
 type TopicConfig struct {
-	MeasureTopic   string
-	OpenThermTopic string
-	LogTopic       string
+	Prefix string // es. "termostato/", sempre con lo slash finale
+	Legacy bool   // sottoscrive anche <prefix>sample ecc. (firmware senza device id)
 }
 
 // NewMQTTClient crea un nuovo client MQTT
@@ -105,136 +105,226 @@ func (mc *MQTTClient) Connect(ctx context.Context) error {
 	return nil
 }
 
-// subscribeAll sottoscrive tutti i topic configurati
+// subscription associa un filtro MQTT al suo handler
+type subscription struct {
+	filter  string
+	qos     byte
+	handler func(device string, payload []byte)
+}
+
+// subscribeAll sottoscrive tutti i topic configurati.
+// Niente <prefix># con switch sulla foglia: catturerebbe anche flussi non JSON
+// (es. il futuro <prefix><id>/coredump/#).
 func (mc *MQTTClient) subscribeAll() error {
-	// Subscribe to measure topic
-	if err := mc.subscribeMeasureTopic(); err != nil {
-		return err
+	p := mc.topics.Prefix
+	subs := []subscription{
+		{p + "+/sample", 0, mc.handleSample},
+		{p + "+/opentherm", 1, mc.handleOpenTherm},
+		{p + "+/logs", 0, mc.handleLog},
+		{p + "+/status", 1, mc.handleStatus},
+		{p + "+/info", 1, mc.handleInfo},
 	}
 
-	// Subscribe to OpenTherm topic
-	if err := mc.subscribeOpenThermTopic(); err != nil {
-		return err
+	// Il firmware vecchio pubblica senza device id: <prefix>+/sample non
+	// riceve <prefix>sample (livelli diversi), servono sottoscrizioni a parte
+	if mc.topics.Legacy {
+		subs = append(subs,
+			subscription{p + "sample", 0, mc.handleSample},
+			subscription{p + "opentherm", 1, mc.handleOpenTherm},
+			subscription{p + "logs", 0, mc.handleLog},
+		)
 	}
 
-	// Subscribe to log topic
-	if err := mc.subscribeLogTopic(); err != nil {
-		return err
+	for _, sub := range subs {
+		if err := mc.subscribe(sub.filter, sub.qos, sub.handler); err != nil {
+			return err
+		}
 	}
 
 	log.Info().Msg("Successfully subscribed to all topics")
 	return nil
 }
 
-// subscribeMeasureTopic sottoscrive il topic delle misure
-func (mc *MQTTClient) subscribeMeasureTopic() error {
+// subscribe sottoscrive filter e passa all'handler il device ricavato dal topic
+func (mc *MQTTClient) subscribe(filter string, qos byte, handler func(device string, payload []byte)) error {
 	log.Info().
-		Str("topic", mc.topics.MeasureTopic).
-		Msg("Subscribing to measure topic")
+		Str("topic", filter).
+		Msg("Subscribing to topic")
 
-	token := mc.client.Subscribe(mc.topics.MeasureTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		var data SampleSt
-		if err := json.Unmarshal(msg.Payload(), &data); err != nil {
-			log.Error().
-				Err(err).
+	token := mc.client.Subscribe(filter, qos, func(client mqtt.Client, msg mqtt.Message) {
+		device, ok := mc.deviceOf(msg.Topic())
+		if !ok {
+			log.Warn().
 				Str("topic", msg.Topic()).
-				Msg("Failed to unmarshal measure data")
+				Msg("Invalid device id in topic, message dropped")
 			return
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := mc.db.InsertMeasure(ctx, data); err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to insert measure")
-		}
+		handler(device, msg.Payload())
 	})
 
 	if !token.WaitTimeout(5 * time.Second) {
-		return fmt.Errorf("subscribe to %s timeout", mc.topics.MeasureTopic)
+		return fmt.Errorf("subscribe to %s timeout", filter)
 	}
 
 	if err := token.Error(); err != nil {
-		return fmt.Errorf("failed to subscribe to %s: %w", mc.topics.MeasureTopic, err)
+		return fmt.Errorf("failed to subscribe to %s: %w", filter, err)
 	}
 
 	return nil
 }
 
-// subscribeOpenThermTopic sottoscrive il topic OpenTherm
-func (mc *MQTTClient) subscribeOpenThermTopic() error {
-	log.Info().
-		Str("topic", mc.topics.OpenThermTopic).
-		Msg("Subscribing to OpenTherm topic")
-
-	token := mc.client.Subscribe(mc.topics.OpenThermTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		var data OtDataSt
-		if err := json.Unmarshal(msg.Payload(), &data); err != nil {
-			log.Error().
-				Err(err).
-				Str("topic", msg.Topic()).
-				Msg("Failed to unmarshal OpenTherm data")
-			return
+// deviceOf ricava il device dal topic: i topic legacy (<prefix><leaf>) sono
+// del device legacyDevice, gli altri devono essere <prefix><id>/<leaf>
+func (mc *MQTTClient) deviceOf(topic string) (string, bool) {
+	if mc.topics.Legacy {
+		rest, found := strings.CutPrefix(topic, mc.topics.Prefix)
+		if found && !strings.Contains(rest, "/") {
+			return legacyDevice, true
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := mc.db.InsertOpenTherm(ctx, data); err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to insert OpenTherm data")
-		}
-	})
-
-	if !token.WaitTimeout(5 * time.Second) {
-		return fmt.Errorf("subscribe to %s timeout", mc.topics.OpenThermTopic)
 	}
 
-	if err := token.Error(); err != nil {
-		return fmt.Errorf("failed to subscribe to %s: %w", mc.topics.OpenThermTopic, err)
-	}
-
-	return nil
+	id, _, ok := deviceFromTopic(mc.topics.Prefix, topic)
+	return id, ok
 }
 
-// subscribeLogTopic sottoscrive il topic dei log ESP32
-func (mc *MQTTClient) subscribeLogTopic() error {
-	log.Info().
-		Str("topic", mc.topics.LogTopic).
-		Msg("Subscribing to log topic")
+// touchDevice aggiorna last_seen, così un device compare in devices anche
+// senza aver mai mandato info
+func (mc *MQTTClient) touchDevice(ctx context.Context, device string) {
+	if device == legacyDevice {
+		return
+	}
+	if err := mc.db.TouchDevice(ctx, device); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to update device last_seen")
+	}
+}
 
-	token := mc.client.Subscribe(mc.topics.LogTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		var data EspLogSt
-		if err := json.Unmarshal(msg.Payload(), &data); err != nil {
-			log.Error().
-				Err(err).
-				Str("topic", msg.Topic()).
-				Msg("Failed to unmarshal log data")
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := mc.db.InsertLog(ctx, data); err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to insert log")
-		}
-	})
-
-	if !token.WaitTimeout(5 * time.Second) {
-		return fmt.Errorf("subscribe to %s timeout", mc.topics.LogTopic)
+func (mc *MQTTClient) handleSample(device string, payload []byte) {
+	var data SampleSt
+	if err := json.Unmarshal(payload, &data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to unmarshal measure data")
+		return
 	}
 
-	if err := token.Error(); err != nil {
-		return fmt.Errorf("failed to subscribe to %s: %w", mc.topics.LogTopic, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := mc.db.InsertMeasure(ctx, device, data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to insert measure")
+	}
+	mc.touchDevice(ctx, device)
+}
+
+func (mc *MQTTClient) handleOpenTherm(device string, payload []byte) {
+	var data OtDataSt
+	if err := json.Unmarshal(payload, &data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to unmarshal OpenTherm data")
+		return
 	}
 
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := mc.db.InsertOpenTherm(ctx, device, data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to insert OpenTherm data")
+	}
+	mc.touchDevice(ctx, device)
+}
+
+func (mc *MQTTClient) handleLog(device string, payload []byte) {
+	var data EspLogSt
+	if err := json.Unmarshal(payload, &data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to unmarshal log data")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := mc.db.InsertLog(ctx, device, data); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to insert log")
+	}
+	mc.touchDevice(ctx, device)
+}
+
+func (mc *MQTTClient) handleStatus(device string, payload []byte) {
+	// Payload vuoto = retained cancellato (mosquitto_pub -r -n)
+	if len(payload) == 0 {
+		return
+	}
+
+	online, ok := parseStatus(payload)
+	if !ok {
+		log.Warn().
+			Str("device", device).
+			Str("payload", string(payload)).
+			Msg("Invalid status payload, message dropped")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := mc.db.UpsertDeviceStatus(ctx, device, online); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to update device status")
+	}
+}
+
+func (mc *MQTTClient) handleInfo(device string, payload []byte) {
+	// Payload vuoto = retained cancellato (mosquitto_pub -r -n)
+	if len(payload) == 0 {
+		return
+	}
+
+	var info DeviceInfoSt
+	if err := json.Unmarshal(payload, &info); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to unmarshal device info")
+		return
+	}
+
+	// Fa fede il topic: l'id nel payload è solo informativo
+	if info.ID != nil && *info.ID != device {
+		log.Warn().
+			Str("device", device).
+			Str("payload_id", *info.ID).
+			Msg("Device info id differs from topic, using topic")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := mc.db.UpsertDeviceInfo(ctx, device, info); err != nil {
+		log.Error().
+			Err(err).
+			Str("device", device).
+			Msg("Failed to update device info")
+	}
 }
 
 // Disconnect disconnette dal broker MQTT

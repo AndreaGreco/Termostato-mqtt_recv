@@ -12,6 +12,10 @@ type Querier interface {
 	InsertLog(ctx context.Context, arg InsertLogParams) error
 	InsertMeasure(ctx context.Context, arg InsertMeasureParams) error
 	InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams) error
+	TouchDevice(ctx context.Context, id string) error
+	// "name" non viene mai scritto dal client: lo assegna l'utente
+	UpsertDeviceInfo(ctx context.Context, arg UpsertDeviceInfoParams) error
+	UpsertDeviceStatus(ctx context.Context, arg UpsertDeviceStatusParams) error
 }
 
 var _ Querier = (*Queries)(nil)

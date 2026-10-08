@@ -30,6 +30,11 @@ Questo inizializza la tabella `schema_version` di Tern marcando tutte le migrazi
 2. **002_convert_temp_types.sql** - Converte i tipi delle colonne temperature a DOUBLE PRECISION
 3. **003_add_opentherm_columns_to_measure.sql** - Aggiunge colonne OpenTherm alla tabella measure
 4. **004_add_power_column.sql** - Aggiunge la colonna Power alla tabella measure
+5. **005_add_thermo_sensor_table.sql** - Crea la tabella thermo_sensor (sensore ThermoPro)
+6. **006_add_esp_metrics_columns.sql** - Aggiunge heap_free, heap_largest_block, boot_count a measure
+7. **007_add_opentherm_columns.sql** - Aggiunge i campi diagnostici/contatori OpenTherm
+8. **008_add_logs_table.sql** - Crea la tabella logs (log dei task ESP32)
+9. **009_add_device.sql** - Multi-device: colonna `device` su measure/opentherm/logs (righe storiche = `'legacy'`) e tabella `devices`
 
 ## Esecuzione Automatica
 

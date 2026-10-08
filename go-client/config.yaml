@@ -9,6 +9,6 @@ mqtt:
   host: "mosquitto"
   port: 1885
 
-measureTopic: termostato/sample
-OpenThermTopic: termostato/opentherm
-logTopic: termostato/logs
+topicPrefix: termostato/
+# Sottoscrive anche i topic senza device (firmware vecchio), salvati come device 'legacy'
+legacyTopics: true

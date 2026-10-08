@@ -29,7 +29,9 @@ CREATE TABLE IF NOT EXISTS opentherm (
     "chPumpOperationHours" INTEGER NOT NULL DEFAULT 0,
     "dhwBurnerStarts" INTEGER NOT NULL DEFAULT 0,
     "dhwBurnerOperationHours" INTEGER NOT NULL DEFAULT 0,
+    "device" TEXT NOT NULL,
     "time" TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_opentherm_time ON opentherm("time");
+CREATE INDEX IF NOT EXISTS idx_opentherm_device_time ON opentherm("device", "time");

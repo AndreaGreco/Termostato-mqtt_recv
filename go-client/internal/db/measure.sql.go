@@ -26,8 +26,9 @@ INSERT INTO measure (
     "heap_free",
     "heap_largest_block",
     "boot_count",
-    "time"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    "time",
+    "device"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 `
 
 type InsertMeasureParams struct {
@@ -45,6 +46,7 @@ type InsertMeasureParams struct {
 	HeapLargestBlock int32            `json:"heap_largest_block"`
 	BootCount        int32            `json:"boot_count"`
 	Time             pgtype.Timestamp `json:"time"`
+	Device           string           `json:"device"`
 }
 
 func (q *Queries) InsertMeasure(ctx context.Context, arg InsertMeasureParams) error {
@@ -63,6 +65,7 @@ func (q *Queries) InsertMeasure(ctx context.Context, arg InsertMeasureParams) er
 		arg.HeapLargestBlock,
 		arg.BootCount,
 		arg.Time,
+		arg.Device,
 	)
 	return err
 }

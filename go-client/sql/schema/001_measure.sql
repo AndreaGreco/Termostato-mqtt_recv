@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS measure (
     "heap_free" INTEGER NOT NULL DEFAULT 0,
     "heap_largest_block" INTEGER NOT NULL DEFAULT 0,
     "boot_count" INTEGER NOT NULL DEFAULT 0,
+    "device" TEXT NOT NULL,
     "time" TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_measure_time ON measure("time");
+CREATE INDEX IF NOT EXISTS idx_measure_device_time ON measure("device", "time");

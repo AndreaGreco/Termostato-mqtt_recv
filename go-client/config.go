@@ -60,19 +60,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Validate topics
-	if config.MeasureTopic == "" {
-		log.Error().Msg("MQTT measure topic not found in config")
+	if config.TopicPrefix == "" {
+		log.Error().Msg("MQTT topicPrefix not found in config")
 		valid = false
 	}
+	config.TopicPrefix = normalizeTopicPrefix(config.TopicPrefix)
 
-	if config.OpenThermTopic == "" {
-		log.Error().Msg("MQTT OpenTherm topic not found in config")
-		valid = false
-	}
-
-	if config.LogTopic == "" {
-		log.Error().Msg("MQTT log topic not found in config")
-		valid = false
+	if config.LegacyTopics == nil {
+		legacy := true
+		config.LegacyTopics = &legacy
 	}
 
 	// Check if valid

@@ -83,7 +83,7 @@ func (db *Database) Close() {
 }
 
 // InsertMeasure inserisce un campione di misura nel database
-func (d *Database) InsertMeasure(ctx context.Context, sample SampleSt) error {
+func (d *Database) InsertMeasure(ctx context.Context, device string, sample SampleSt) error {
 	sampleTime := time.UnixMilli(int64(sample.Timestamp * 1000))
 	diffTime := time.Until(sampleTime).Seconds()
 	diff := math.Abs(diffTime)
@@ -113,6 +113,7 @@ func (d *Database) InsertMeasure(ctx context.Context, sample SampleSt) error {
 		HeapLargestBlock: int32(sample.HeapLargestBlock),
 		BootCount:        int32(sample.BootCount),
 		Time:             pgTimestamp,
+		Device:           device,
 	}
 
 	err := d.queries.InsertMeasure(ctx, params)
@@ -121,6 +122,7 @@ func (d *Database) InsertMeasure(ctx context.Context, sample SampleSt) error {
 	}
 
 	log.Info().
+		Str("device", device).
 		Float64("temp", sample.AmbTemp).
 		Float64("setpoint", sample.AmbientSetpoint).
 		Int("heap_free", sample.HeapFree).
@@ -131,7 +133,7 @@ func (d *Database) InsertMeasure(ctx context.Context, sample SampleSt) error {
 }
 
 // InsertOpenTherm inserisce dati OpenTherm nel database
-func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error {
+func (d *Database) InsertOpenTherm(ctx context.Context, device string, otSample OtDataSt) error {
 	sampleTime := time.UnixMilli(int64(otSample.Timestamp * 1000))
 	diffTime := time.Until(sampleTime).Seconds()
 	diff := math.Abs(diffTime)
@@ -172,6 +174,7 @@ func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error
 		DhwBurnerStarts:          int32(otSample.DhwBurnerStarts),
 		DhwBurnerOperationHours:  int32(otSample.DhwBurnerOperationHours),
 		Time:                     pgTimestamp,
+		Device:                   device,
 	}
 
 	err := d.queries.InsertOpenTherm(ctx, params)
@@ -180,6 +183,7 @@ func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error
 	}
 
 	log.Info().
+		Str("device", device).
 		Float64("heating", otSample.HeatingWaterTempRead).
 		Bool("flame", otSample.FlameOn).
 		Float64("modulation", otSample.ModulationLvl).
@@ -188,7 +192,7 @@ func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error
 }
 
 // InsertLog inserisce un messaggio di log ESP32 nel database
-func (d *Database) InsertLog(ctx context.Context, entry EspLogSt) error {
+func (d *Database) InsertLog(ctx context.Context, device string, entry EspLogSt) error {
 	logTime := time.UnixMilli(int64(entry.Timestamp * 1000))
 
 	// I log emessi prima della sync SNTP hanno un timestamp non valido:
@@ -202,9 +206,10 @@ func (d *Database) InsertLog(ctx context.Context, entry EspLogSt) error {
 	}
 
 	params := db.InsertLogParams{
-		Time: pgtype.Timestamp{Time: logTime, Valid: true},
-		Task: entry.Task,
-		Msg:  entry.Msg,
+		Time:   pgtype.Timestamp{Time: logTime, Valid: true},
+		Task:   entry.Task,
+		Msg:    entry.Msg,
+		Device: device,
 	}
 
 	if err := d.queries.InsertLog(ctx, params); err != nil {
@@ -212,8 +217,56 @@ func (d *Database) InsertLog(ctx context.Context, entry EspLogSt) error {
 	}
 
 	log.Debug().
+		Str("device", device).
 		Str("task", entry.Task).
 		Str("msg", entry.Msg).
 		Msg("Inserted log entry")
+	return nil
+}
+
+// UpsertDeviceInfo registra o aggiorna l'identità di un device (non tocca "name")
+func (d *Database) UpsertDeviceInfo(ctx context.Context, device string, info DeviceInfoSt) error {
+	params := db.UpsertDeviceInfoParams{
+		ID:        device,
+		Hostname:  info.Hostname,
+		Ip:        info.IP,
+		FwVersion: info.FwVersion,
+		Partition: info.Partition,
+	}
+
+	if err := d.queries.UpsertDeviceInfo(ctx, params); err != nil {
+		return fmt.Errorf("failed to upsert device info: %w", err)
+	}
+
+	log.Info().
+		Str("device", device).
+		Interface("info", info).
+		Msg("Updated device info")
+	return nil
+}
+
+// UpsertDeviceStatus aggiorna lo stato online/offline di un device
+func (d *Database) UpsertDeviceStatus(ctx context.Context, device string, online bool) error {
+	params := db.UpsertDeviceStatusParams{
+		ID:     device,
+		Online: online,
+	}
+
+	if err := d.queries.UpsertDeviceStatus(ctx, params); err != nil {
+		return fmt.Errorf("failed to upsert device status: %w", err)
+	}
+
+	log.Info().
+		Str("device", device).
+		Bool("online", online).
+		Msg("Updated device status")
+	return nil
+}
+
+// TouchDevice aggiorna last_seen del device, creandolo se non esiste
+func (d *Database) TouchDevice(ctx context.Context, device string) error {
+	if err := d.queries.TouchDevice(ctx, device); err != nil {
+		return fmt.Errorf("failed to touch device: %w", err)
+	}
 	return nil
 }

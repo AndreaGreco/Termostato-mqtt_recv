@@ -58,6 +58,16 @@ type EspLogSt struct {
 	Msg       string  `json:"msg"`
 }
 
+// DeviceInfoSt rappresenta il payload retained di <prefix><id>/info.
+// I campi mancanti restano nil e finiscono NULL nel database.
+type DeviceInfoSt struct {
+	ID        *string `json:"id"`
+	Hostname  *string `json:"hostname"`
+	IP        *string `json:"ip"`
+	FwVersion *string `json:"fw_version"`
+	Partition *string `json:"partition"`
+}
+
 // DatabaseConfig contiene la configurazione del database
 type DatabaseConfig struct {
 	User     string `yaml:"user"`
@@ -77,9 +87,8 @@ type MqttConfig struct {
 
 // Config contiene la configurazione completa dell'applicazione
 type Config struct {
-	Db             DatabaseConfig `yaml:"database"`
-	Mqtt           MqttConfig     `yaml:"mqtt"`
-	MeasureTopic   string         `yaml:"measureTopic"`
-	OpenThermTopic string         `yaml:"OpenThermTopic"`
-	LogTopic       string         `yaml:"logTopic"`
+	Db           DatabaseConfig `yaml:"database"`
+	Mqtt         MqttConfig     `yaml:"mqtt"`
+	TopicPrefix  string         `yaml:"topicPrefix"`
+	LegacyTopics *bool          `yaml:"legacyTopics"` // nil = default true
 }

@@ -37,8 +37,9 @@ INSERT INTO opentherm (
     "chPumpOperationHours",
     "dhwBurnerStarts",
     "dhwBurnerOperationHours",
-    "time"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+    "time",
+    "device"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 `
 
 type InsertOpenThermParams struct {
@@ -67,6 +68,7 @@ type InsertOpenThermParams struct {
 	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
 	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
 	Time                     pgtype.Timestamp `json:"time"`
+	Device                   string           `json:"device"`
 }
 
 func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams) error {
@@ -96,6 +98,7 @@ func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams
 		arg.DhwBurnerStarts,
 		arg.DhwBurnerOperationHours,
 		arg.Time,
+		arg.Device,
 	)
 	return err
 }
