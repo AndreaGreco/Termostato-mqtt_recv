@@ -191,6 +191,16 @@ func (d *Database) InsertOpenTherm(ctx context.Context, otSample OtDataSt) error
 func (d *Database) InsertLog(ctx context.Context, entry EspLogSt) error {
 	logTime := time.UnixMilli(int64(entry.Timestamp * 1000))
 
+	// I log emessi prima della sync SNTP hanno un timestamp non valido:
+	// invece di scartarli (servono per il debug del boot) usa l'ora di ricezione
+	if math.Abs(time.Since(logTime).Seconds()) > 60 {
+		log.Debug().
+			Float64("t", entry.Timestamp).
+			Str("task", entry.Task).
+			Msg("Log timestamp out of range, using receive time")
+		logTime = time.Now()
+	}
+
 	params := db.InsertLogParams{
 		Time: pgtype.Timestamp{Time: logTime, Valid: true},
 		Task: entry.Task,

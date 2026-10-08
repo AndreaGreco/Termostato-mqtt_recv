@@ -72,21 +72,41 @@ func (mc *MQTTClient) Connect(ctx context.Context) error {
 	opts.SetConnectRetry(true)
 	opts.SetConnectRetryInterval(5 * time.Second)
 
+	// Le subscribe vanno rifatte ad ogni (ri)connessione: con clean session
+	// il broker le dimentica e l'auto-reconnect non le ripristina.
+	opts.SetOnConnectHandler(func(client mqtt.Client) {
+		log.Info().
+			Str("broker", uri.Host).
+			Msg("Connected to MQTT broker")
+
+		if err := mc.subscribeAll(); err != nil {
+			log.Error().Err(err).Msg("Failed to subscribe topics")
+		}
+	})
+	opts.SetConnectionLostHandler(func(client mqtt.Client, err error) {
+		log.Warn().Err(err).Msg("MQTT connection lost, reconnecting...")
+	})
+
 	mc.client = mqtt.NewClient(opts)
 	token := mc.client.Connect()
 
-	if !token.WaitTimeout(10 * time.Second) {
-		return fmt.Errorf("MQTT connection timeout")
+	// Con ConnectRetry il token si completa solo a connessione riuscita:
+	// attendi senza timeout finché non arriva un segnale di terminazione
+	select {
+	case <-token.Done():
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	if err := token.Error(); err != nil {
 		return fmt.Errorf("MQTT connection failed: %w", err)
 	}
 
-	log.Info().
-		Str("broker", uri.Host).
-		Msg("Connected to MQTT broker")
+	return nil
+}
 
+// subscribeAll sottoscrive tutti i topic configurati
+func (mc *MQTTClient) subscribeAll() error {
 	// Subscribe to measure topic
 	if err := mc.subscribeMeasureTopic(); err != nil {
 		return err

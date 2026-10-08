@@ -21,6 +21,15 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	// Cancella il context al segnale, anche durante l'attesa del broker
+	go func() {
+		sig := <-sigs
+		log.Info().
+			Str("signal", sig.String()).
+			Msg("Received signal, shutting down gracefully...")
+		cancel()
+	}()
+
 	log.Info().Msg("Starting Termostato MQTT client...")
 
 	// Carica la configurazione
@@ -47,6 +56,10 @@ func main() {
 	mqttClient := NewMQTTClient(&config.Mqtt, topics, db)
 
 	if err := mqttClient.Connect(ctx); err != nil {
+		if ctx.Err() != nil {
+			log.Info().Msg("Shutdown before MQTT connection")
+			return
+		}
 		log.Fatal().Err(err).Msg("Failed to setup MQTT client")
 	}
 	defer mqttClient.Disconnect()
@@ -54,12 +67,7 @@ func main() {
 	log.Info().Msg("System ready. Waiting for messages...")
 
 	// Attendi segnale di terminazione
-	sig := <-sigs
-	log.Info().
-		Str("signal", sig.String()).
-		Msg("Received signal, shutting down gracefully...")
-
-	cancel()
+	<-ctx.Done()
 
 	// Tempo per la chiusura pulita
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
