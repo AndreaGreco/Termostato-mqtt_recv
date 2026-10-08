@@ -35,6 +35,7 @@ services:
 
   mqttclient:
     build: go-client/
+    restart: unless-stopped
     environment:
       - PG_DB=termostato
       - PG_USER=termostato
@@ -56,6 +57,7 @@ services:
 
   mosquitto:
     container_name: mosquitto
+    restart: unless-stopped
     image: eclipse-mosquitto
     networks:
       - meteo-station
@@ -68,6 +70,7 @@ services:
 
   timescaledb:
     image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
     networks:
       - meteo-station
     ports:
@@ -86,6 +89,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     container_name: grafana
     networks:
       - meteo-station
