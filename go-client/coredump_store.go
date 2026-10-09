@@ -29,8 +29,9 @@ func newFileCoredumpSaver(dir, elfDir string, db *Database) (*fileCoredumpSaver,
 	return &fileCoredumpSaver{dir: dir, elfDir: elfDir, db: db, now: time.Now}, nil
 }
 
-// SaveCoredump scrive <data>-<cid>-<elf_sha256>.elf e .json, poi la riga in
-// tabella. Solo se tutto riesce restituisce nil (e parte l'ack).
+// SaveCoredump scrive <data>-<cid>-<elf_sha256>.bin e .json, poi la riga in
+// tabella. Il .bin è la partizione così com'è (header, ELF, checksum): non è
+// un ELF, esp-coredump lo legge con -t raw. Solo se tutto riesce restituisce nil (e parte l'ack).
 func (s *fileCoredumpSaver) SaveCoredump(dev, cid string, meta *coredumpMeta, rawMeta, img []byte) error {
 	devDir := filepath.Join(s.dir, dev)
 	if err := os.MkdirAll(devDir, 0o755); err != nil {
@@ -43,9 +44,9 @@ func (s *fileCoredumpSaver) SaveCoredump(dev, cid string, meta *coredumpMeta, ra
 	}
 	base := filepath.Join(devDir, fmt.Sprintf("%s-%s-%s",
 		s.now().UTC().Format("20060102T150405Z"), cid, sha))
-	elfPath := base + ".elf"
+	binPath := base + ".bin"
 
-	if err := writeFileAtomic(elfPath, img); err != nil {
+	if err := writeFileAtomic(binPath, img); err != nil {
 		return err
 	}
 	if err := writeFileAtomic(base+".json", rawMeta); err != nil {
@@ -55,7 +56,7 @@ func (s *fileCoredumpSaver) SaveCoredump(dev, cid string, meta *coredumpMeta, ra
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.db.InsertCoredump(ctx, dev, cid, elfPath, meta); err != nil {
+	if err := s.db.InsertCoredump(ctx, dev, cid, binPath, meta); err != nil {
 		return err
 	}
 	if err := s.db.TouchDevice(ctx, dev); err != nil {
@@ -66,14 +67,14 @@ func (s *fileCoredumpSaver) SaveCoredump(dev, cid string, meta *coredumpMeta, ra
 		Str("device", dev).
 		Str("cid", cid).
 		Int("size", meta.Size).
-		Str("path", elfPath)
+		Str("path", binPath)
 	if meta.PanicReason != nil {
 		ev = ev.Str("panic_reason", *meta.PanicReason)
 	}
 	ev.Msg("Coredump saved")
 
 	if s.elfDir != "" && sha != "unknown" {
-		go s.decode(elfPath, base+".txt", sha)
+		go s.decode(binPath, base+".txt", sha)
 	}
 	return nil
 }

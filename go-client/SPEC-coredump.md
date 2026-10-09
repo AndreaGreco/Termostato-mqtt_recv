@@ -149,12 +149,14 @@ e un volume in `docker-compose.yml` per `mqttclient`
 File, con `<data>` = data UTC di ricezione `20261009T143012Z`:
 
 ```
-<coredumpDir>/<dev>/<data>-<cid>-<elf_sha256>.elf    l'immagine
+<coredumpDir>/<dev>/<data>-<cid>-<elf_sha256>.bin    l'immagine
 <coredumpDir>/<dev>/<data>-<cid>-<elf_sha256>.json   il meta così come arrivato
 ```
 
-(`elf_sha256` mancante → `unknown`.) Scrivere su file temporaneo nella stessa
-directory e poi `os.Rename`, così un crash a metà non lascia un `.elf` troncato.
+(`elf_sha256` mancante → `unknown`.) Il `.bin` è la partizione così com'è: header
+di 20 byte, ELF, checksum in coda. Non è un ELF: `esp-coredump` lo legge con
+`-t raw`, non con `-t elf`. Scrivere su file temporaneo nella stessa directory e
+poi `os.Rename`, così un crash a metà non lascia un `.bin` troncato.
 
 Poi `InsertCoredump` (sotto), poi l'ack. Ordine importante: l'ack dice al device
 "puoi cancellare la flash", quindi va pubblicato **solo dopo** che file e riga
@@ -181,10 +183,10 @@ Se `elfDir` è configurata ed esiste `<elfDir>/Termostato-<elf_sha256>*.elf`
 (glob: `elf_sha256` è un prefisso), lanciare in una goroutine, con timeout 60 s:
 
 ```sh
-esp-coredump info_corefile -c <file>.elf -t raw <Termostato-xxx.elf>
+esp-coredump info_corefile -c <file>.bin -t raw <Termostato-xxx.elf>
 ```
 
-e salvare stdout+stderr in `<data>-<cid>-<elf_sha256>.txt` accanto all'ELF.
+e salvare stdout+stderr in `<data>-<cid>-<elf_sha256>.txt` accanto al `.bin`.
 Errori → log Warn, mai blocco dell'ack. Richiede `esp-coredump`
 (`pip install esp-coredump`) e un `xtensa-esp32-elf-gdb` nell'immagine: se
 appesantisce troppo il Dockerfile, rimandare. Gli ELF dell'applicazione li
@@ -204,7 +206,7 @@ CREATE TABLE coredumps (
     "pc"           TEXT,
     "panic_reason" TEXT,
     "backtrace"    TEXT[],
-    "path"         TEXT NOT NULL,              -- percorso del .elf
+    "path"         TEXT NOT NULL,              -- percorso del .bin (prima del fix, .elf)
     PRIMARY KEY ("device", "id")
 );
 
@@ -271,7 +273,7 @@ i=0; for f in /tmp/cd.part.*; do
 mosquitto_pub -p 1885 -q 1 -r -t $P/$CID/meta -m \
   "{\"device\":\"test01\",\"id\":\"$CID\",\"size\":5000,\"chunk_size\":1024,\"chunks\":$i,\"crc32\":\"$CID\"}"
 mosquitto_sub -p 1885 -t $P/$CID/ack -C 1 -W 10     # -> ok
-cmp /tmp/cd.bin coredumps/test01/*-$CID-unknown.elf
+cmp /tmp/cd.bin coredumps/test01/*-$CID-unknown.bin
 ```
 
 Ripetere la stessa sequenza: nessun nuovo file, l'ack torna. Ripulire con
