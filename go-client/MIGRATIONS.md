@@ -35,6 +35,7 @@ Questo inizializza la tabella `schema_version` di Tern marcando tutte le migrazi
 7. **007_add_opentherm_columns.sql** - Aggiunge i campi diagnostici/contatori OpenTherm
 8. **008_add_logs_table.sql** - Crea la tabella logs (log dei task ESP32)
 9. **009_add_device.sql** - Multi-device: colonna `device` su measure/opentherm/logs (righe storiche = `'legacy'`) e tabella `devices`
+10. **010_add_coredumps.sql** - Tabella `coredumps` (core dump ricevuti via MQTT, file in `coredumpDir`)
 
 ## Esecuzione Automatica
 

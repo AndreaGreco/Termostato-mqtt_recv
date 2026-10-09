@@ -270,3 +270,32 @@ func (d *Database) TouchDevice(ctx context.Context, device string) error {
 	}
 	return nil
 }
+
+// InsertCoredump registra un core dump salvato su disco (idempotente)
+func (d *Database) InsertCoredump(ctx context.Context, dev, cid, path string, meta *coredumpMeta) error {
+	params := db.InsertCoredumpParams{
+		Device:      dev,
+		ID:          cid,
+		Size:        int32(meta.Size),
+		ElfSha256:   meta.ElfSHA256,
+		Task:        meta.Task,
+		Pc:          meta.PC,
+		PanicReason: meta.PanicReason,
+		Backtrace:   meta.Backtrace,
+		Path:        path,
+	}
+
+	if err := d.queries.InsertCoredump(ctx, params); err != nil {
+		return fmt.Errorf("failed to insert coredump: %w", err)
+	}
+	return nil
+}
+
+// ListCoredumpKeys restituisce le coppie (device, id) dei core dump già salvati
+func (d *Database) ListCoredumpKeys(ctx context.Context) ([]db.ListCoredumpKeysRow, error) {
+	rows, err := d.queries.ListCoredumpKeys(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list coredumps: %w", err)
+	}
+	return rows, nil
+}

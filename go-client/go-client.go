@@ -52,7 +52,21 @@ func main() {
 		Prefix: config.TopicPrefix,
 		Legacy: *config.LegacyTopics,
 	}
-	mqttClient := NewMQTTClient(&config.Mqtt, topics, db)
+	// Core dump: attivi solo con coredumpDir configurata
+	var cdSaver coredumpSaver
+	if config.CoredumpDir != "" {
+		saver, err := newFileCoredumpSaver(config.CoredumpDir, config.ElfDir, db)
+		if err != nil {
+			log.Error().Err(err).Msg("Coredump flow disabled")
+		} else {
+			cdSaver = saver
+			log.Info().Str("dir", config.CoredumpDir).Msg("Coredump flow enabled")
+		}
+	} else {
+		log.Info().Msg("coredumpDir not configured, coredump flow disabled")
+	}
+
+	mqttClient := NewMQTTClient(&config.Mqtt, topics, db, cdSaver)
 
 	if err := mqttClient.Connect(ctx); err != nil {
 		if ctx.Err() != nil {

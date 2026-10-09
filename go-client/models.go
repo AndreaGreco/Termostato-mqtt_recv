@@ -91,4 +91,6 @@ type Config struct {
 	Mqtt         MqttConfig     `yaml:"mqtt"`
 	TopicPrefix  string         `yaml:"topicPrefix"`
 	LegacyTopics *bool          `yaml:"legacyTopics"` // nil = default true
+	CoredumpDir  string         `yaml:"coredumpDir"`  // vuota = core dump disattivati
+	ElfDir       string         `yaml:"elfDir"`       // opzionale, per la decodifica
 }

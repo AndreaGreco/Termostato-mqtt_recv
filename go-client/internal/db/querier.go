@@ -9,9 +9,12 @@ import (
 )
 
 type Querier interface {
+	// DO NOTHING: due reinvii ricomposti in parallelo non devono fallire
+	InsertCoredump(ctx context.Context, arg InsertCoredumpParams) error
 	InsertLog(ctx context.Context, arg InsertLogParams) error
 	InsertMeasure(ctx context.Context, arg InsertMeasureParams) error
 	InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams) error
+	ListCoredumpKeys(ctx context.Context) ([]ListCoredumpKeysRow, error)
 	TouchDevice(ctx context.Context, id string) error
 	// "name" non viene mai scritto dal client: lo assegna l'utente
 	UpsertDeviceInfo(ctx context.Context, arg UpsertDeviceInfoParams) error

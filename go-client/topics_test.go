@@ -104,3 +104,59 @@ func TestDeviceInfoMissingFields(t *testing.T) {
 		t.Errorf("missing fields must stay nil (NULL): %+v", info)
 	}
 }
+
+func TestCoredumpFromTopic(t *testing.T) {
+	const p = "termostato/"
+	const base = "termostato/a1b2c3/coredump/9f3c01aa/"
+
+	valid := []struct {
+		topic    string
+		wantKind string
+		wantN    int
+	}{
+		{base + "data/0", "data", 0},
+		{base + "data/12", "data", 12},
+		{base + "data/1023", "data", 1023},
+		{base + "meta", "meta", 0},
+	}
+	for _, tt := range valid {
+		dev, cid, kind, n, ok := coredumpFromTopic(p, tt.topic)
+		if !ok || dev != "a1b2c3" || cid != "9f3c01aa" || kind != tt.wantKind || n != tt.wantN {
+			t.Errorf("coredumpFromTopic(%q) = (%q, %q, %q, %d, %v), want (a1b2c3, 9f3c01aa, %q, %d, true)",
+				tt.topic, dev, cid, kind, n, ok, tt.wantKind, tt.wantN)
+		}
+	}
+
+	if dev, _, _, _, ok := coredumpFromTopic("termostato", base+"meta"); !ok || dev != "a1b2c3" {
+		t.Errorf("prefix without slash: got (%q, %v)", dev, ok)
+	}
+
+	rejected := []string{
+		base + "data/01",
+		base + "data/-1",
+		base + "data/+1",
+		base + "data/1024",
+		base + "data/99999",
+		base + "data/x",
+		base + "data/",
+		base + "data",
+		base + "ack",
+		base + "meta/extra",
+		base + "data/1/extra",
+		"termostato/a1b2c3/coredump/9f3c01a/meta",   // 7 caratteri
+		"termostato/a1b2c3/coredump/9f3c01aab/meta", // 9 caratteri
+		"termostato/a1b2c3/coredump/9F3C01AA/meta",  // maiuscolo
+		"termostato/a1b2c3/coredump/9f3c01ag/meta",  // non hex
+		"termostato//coredump/9f3c01aa/meta",        // device vuoto
+		"termostato/../coredump/9f3c01aa/meta",      // path traversal
+		"termostato/legacy/coredump/9f3c01aa/meta",  // id riservato
+		"termostato/a1b2c3/coredumpx/9f3c01aa/meta",
+		"termostato/a1b2c3/9f3c01aa/meta",
+		"altro/a1b2c3/coredump/9f3c01aa/meta", // prefisso diverso
+	}
+	for _, topic := range rejected {
+		if _, _, _, _, ok := coredumpFromTopic(p, topic); ok {
+			t.Errorf("coredumpFromTopic(%q) accepted, want rejected", topic)
+		}
+	}
+}

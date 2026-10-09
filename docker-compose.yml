@@ -45,6 +45,7 @@ services:
       - MQTT_URI=mqtt://mosquitto:1885
     volumes:
       - ./go-client/init_existing_db.sql:/app/init_existing_db.sql:ro
+      - ./coredumps:/data/coredumps
     depends_on:
       timescaledb:
         condition: service_healthy

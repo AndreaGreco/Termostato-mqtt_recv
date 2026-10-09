@@ -1,1 +1,3 @@
 /target
+/coredumps
+/go-client/mqtt_client

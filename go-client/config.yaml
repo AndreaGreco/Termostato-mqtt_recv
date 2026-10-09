@@ -12,3 +12,9 @@ mqtt:
 topicPrefix: termostato/
 # Sottoscrive anche i topic senza device (firmware vecchio), salvati come device 'legacy'
 legacyTopics: true
+
+# Core dump ricevuti via MQTT (vuota o assente = flusso disattivato)
+coredumpDir: /data/coredumps
+# ELF dell'applicazione (Termostato-<sha>*.elf) per la decodifica con esp-coredump.
+# L'immagine non include esp-coredump: lasciare commentato finché non serve.
+# elfDir: /data/elf

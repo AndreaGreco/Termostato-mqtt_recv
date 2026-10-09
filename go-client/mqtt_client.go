@@ -14,10 +14,11 @@ import (
 
 // MQTTClient gestisce la connessione MQTT
 type MQTTClient struct {
-	client mqtt.Client
-	config *MqttConfig
-	db     *Database
-	topics *TopicConfig
+	client    mqtt.Client
+	config    *MqttConfig
+	db        *Database
+	topics    *TopicConfig
+	coredumps *coredumpAssembler // nil = flusso coredump disattivato
 }
 
 // TopicConfig contiene la configurazione dei topic MQTT
@@ -26,13 +27,18 @@ type TopicConfig struct {
 	Legacy bool   // sottoscrive anche <prefix>sample ecc. (firmware senza device id)
 }
 
-// NewMQTTClient crea un nuovo client MQTT
-func NewMQTTClient(config *MqttConfig, topics *TopicConfig, db *Database) *MQTTClient {
-	return &MQTTClient{
+// NewMQTTClient crea un nuovo client MQTT. Con cdSaver nil i core dump non
+// vengono sottoscritti.
+func NewMQTTClient(config *MqttConfig, topics *TopicConfig, db *Database, cdSaver coredumpSaver) *MQTTClient {
+	mc := &MQTTClient{
 		config: config,
 		topics: topics,
 		db:     db,
 	}
+	if cdSaver != nil {
+		mc.coredumps = newCoredumpAssembler(cdSaver, mc)
+	}
+	return mc
 }
 
 // createClientOptions crea le opzioni per il client MQTT
@@ -65,6 +71,11 @@ func (mc *MQTTClient) Connect(ctx context.Context) error {
 	uri, err := url.Parse(confURI)
 	if err != nil {
 		return fmt.Errorf("failed to parse MQTT URI: %w", err)
+	}
+
+	if mc.coredumps != nil {
+		mc.loadSavedCoredumps(ctx)
+		go mc.expireCoredumps(ctx)
 	}
 
 	opts := mc.createClientOptions("termostato-client", uri)
@@ -109,7 +120,7 @@ func (mc *MQTTClient) Connect(ctx context.Context) error {
 type subscription struct {
 	filter  string
 	qos     byte
-	handler func(device string, payload []byte)
+	handler func(topic string, payload []byte)
 }
 
 // subscribeAll sottoscrive tutti i topic configurati.
@@ -118,20 +129,28 @@ type subscription struct {
 func (mc *MQTTClient) subscribeAll() error {
 	p := mc.topics.Prefix
 	subs := []subscription{
-		{p + "+/sample", 0, mc.handleSample},
-		{p + "+/opentherm", 1, mc.handleOpenTherm},
-		{p + "+/logs", 0, mc.handleLog},
-		{p + "+/status", 1, mc.handleStatus},
-		{p + "+/info", 1, mc.handleInfo},
+		{p + "+/sample", 0, mc.withDevice(mc.handleSample)},
+		{p + "+/opentherm", 1, mc.withDevice(mc.handleOpenTherm)},
+		{p + "+/logs", 0, mc.withDevice(mc.handleLog)},
+		{p + "+/status", 1, mc.withDevice(mc.handleStatus)},
+		{p + "+/info", 1, mc.withDevice(mc.handleInfo)},
 	}
 
 	// Il firmware vecchio pubblica senza device id: <prefix>+/sample non
 	// riceve <prefix>sample (livelli diversi), servono sottoscrizioni a parte
 	if mc.topics.Legacy {
 		subs = append(subs,
-			subscription{p + "sample", 0, mc.handleSample},
-			subscription{p + "opentherm", 1, mc.handleOpenTherm},
-			subscription{p + "logs", 0, mc.handleLog},
+			subscription{p + "sample", 0, mc.withDevice(mc.handleSample)},
+			subscription{p + "opentherm", 1, mc.withDevice(mc.handleOpenTherm)},
+			subscription{p + "logs", 0, mc.withDevice(mc.handleLog)},
+		)
+	}
+
+	// Solo data e meta: <prefix>+/coredump/# riceverebbe anche il nostro ack
+	if mc.coredumps != nil {
+		subs = append(subs,
+			subscription{p + "+/coredump/+/data/+", 1, mc.handleCoredump},
+			subscription{p + "+/coredump/+/meta", 1, mc.handleCoredump},
 		)
 	}
 
@@ -145,21 +164,14 @@ func (mc *MQTTClient) subscribeAll() error {
 	return nil
 }
 
-// subscribe sottoscrive filter e passa all'handler il device ricavato dal topic
-func (mc *MQTTClient) subscribe(filter string, qos byte, handler func(device string, payload []byte)) error {
+// subscribe sottoscrive filter e passa all'handler topic e payload
+func (mc *MQTTClient) subscribe(filter string, qos byte, handler func(topic string, payload []byte)) error {
 	log.Info().
 		Str("topic", filter).
 		Msg("Subscribing to topic")
 
 	token := mc.client.Subscribe(filter, qos, func(client mqtt.Client, msg mqtt.Message) {
-		device, ok := mc.deviceOf(msg.Topic())
-		if !ok {
-			log.Warn().
-				Str("topic", msg.Topic()).
-				Msg("Invalid device id in topic, message dropped")
-			return
-		}
-		handler(device, msg.Payload())
+		handler(msg.Topic(), msg.Payload())
 	})
 
 	if !token.WaitTimeout(5 * time.Second) {
@@ -171,6 +183,20 @@ func (mc *MQTTClient) subscribe(filter string, qos byte, handler func(device str
 	}
 
 	return nil
+}
+
+// withDevice adatta un handler che vuole solo il device ricavato dal topic
+func (mc *MQTTClient) withDevice(handler func(device string, payload []byte)) func(topic string, payload []byte) {
+	return func(topic string, payload []byte) {
+		device, ok := mc.deviceOf(topic)
+		if !ok {
+			log.Warn().
+				Str("topic", topic).
+				Msg("Invalid device id in topic, message dropped")
+			return
+		}
+		handler(device, payload)
+	}
 }
 
 // deviceOf ricava il device dal topic: i topic legacy (<prefix><leaf>) sono
@@ -324,6 +350,67 @@ func (mc *MQTTClient) handleInfo(device string, payload []byte) {
 			Err(err).
 			Str("device", device).
 			Msg("Failed to update device info")
+	}
+}
+
+func (mc *MQTTClient) handleCoredump(topic string, payload []byte) {
+	dev, cid, kind, n, ok := coredumpFromTopic(mc.topics.Prefix, topic)
+	if !ok {
+		log.Warn().
+			Str("topic", topic).
+			Msg("Invalid coredump topic, message dropped")
+		return
+	}
+	mc.coredumps.Handle(dev, cid, kind, n, payload)
+}
+
+// AckCoredump pubblica l'ack retained: il device può cancellare la flash.
+// Niente Wait nell'handler (con OrderMatters si bloccherebbe): l'esito si
+// controlla in una goroutine.
+func (mc *MQTTClient) AckCoredump(dev, cid string) {
+	topic := mc.topics.Prefix + dev + "/coredump/" + cid + "/ack"
+	token := mc.client.Publish(topic, 1, true, "ok")
+
+	go func() {
+		if !token.WaitTimeout(10 * time.Second) {
+			log.Warn().Str("topic", topic).Msg("Coredump ack publish timeout")
+			return
+		}
+		if err := token.Error(); err != nil {
+			log.Error().Err(err).Str("topic", topic).Msg("Failed to publish coredump ack")
+			return
+		}
+		log.Info().Str("topic", topic).Msg("Coredump ack published")
+	}()
+}
+
+// loadSavedCoredumps carica i core dump già in tabella, così i reinvii
+// ricevono solo l'ack senza interrogare il database a ogni pezzo
+func (mc *MQTTClient) loadSavedCoredumps(ctx context.Context) {
+	keys, err := mc.db.ListCoredumpKeys(ctx)
+	if err != nil {
+		// Non bloccante: al peggio un reinvio viene riscritto su disco
+		log.Error().Err(err).Msg("Failed to load saved coredumps")
+		return
+	}
+	for _, k := range keys {
+		mc.coredumps.MarkSaved(k.Device, k.ID)
+	}
+	log.Info().Int("count", len(keys)).Msg("Loaded saved coredumps")
+}
+
+// expireCoredumps ripulisce ogni ora gli stati parziali scaduti
+func (mc *MQTTClient) expireCoredumps(ctx context.Context) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			mc.coredumps.Expire()
+		}
 	}
 }
 

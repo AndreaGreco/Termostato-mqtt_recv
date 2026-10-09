@@ -8,6 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Coredump struct {
+	Device      string           `json:"device"`
+	ID          string           `json:"id"`
+	Received    pgtype.Timestamp `json:"received"`
+	Size        int32            `json:"size"`
+	ElfSha256   *string          `json:"elf_sha256"`
+	Task        *string          `json:"task"`
+	Pc          *string          `json:"pc"`
+	PanicReason *string          `json:"panic_reason"`
+	Backtrace   []string         `json:"backtrace"`
+	Path        string           `json:"path"`
+}
+
 type Device struct {
 	ID        string           `json:"id"`
 	Name      *string          `json:"name"`
