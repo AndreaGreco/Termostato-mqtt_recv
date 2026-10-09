@@ -22,8 +22,11 @@ flash.
 ```
 
 - `<prefix>` = `topicPrefix` (`termostato/`), `<dev>` come in `SPEC-multi-device.md`.
-- `<cid>` = CRC-32 zlib/IEEE dell'immagine intera, **8 cifre esadecimali
-  minuscole** (`fmt.Sprintf("%08x", crc32.ChecksumIEEE(img))`).
+- `<cid>` = CRC-32 zlib/IEEE dell'immagine **senza gli ultimi 4 byte**, **8 cifre
+  esadecimali minuscole** (`fmt.Sprintf("%08x", crc32.ChecksumIEEE(img[:len(img)-4]))`).
+  L'immagine in flash finisce con il CRC-32 del resto (little endian), quindi il
+  CRC dell'immagine intera è sempre la costante `2144df1c`, uguale per ogni core
+  dump: non può fare da id.
 - `<n>` = indice decimale del pezzo, da 0 a `chunks-1`, senza zeri iniziali.
   Ogni pezzo è lungo `chunk_size` (1024) byte tranne l'ultimo.
 - Il device manda un pezzo alla volta (il successivo dopo il PUBACK), poi `meta`.
@@ -115,7 +118,7 @@ A ogni messaggio non vuoto:
    il meta.
 3. Completo quando c'è il meta e ci sono tutti i pezzi `0..chunks-1`. Allora:
    - concatenare in ordine; verificare `len == size` e
-     `crc32.ChecksumIEEE == crc32` del meta (== `cid`);
+     il CRC dei primi `size - 4` byte `== crc32` del meta (== `cid`);
    - **sbagliato** → log Error con dev, cid, size attesa/ottenuta, CRC
      atteso/ottenuto; scartare lo stato parziale; **nessun ack**. Il device
      ripubblicherà fra 12 h o al prossimo avvio;

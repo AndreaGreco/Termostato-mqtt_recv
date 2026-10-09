@@ -261,7 +261,7 @@ func (a *coredumpAssembler) tryComplete(k coredumpKey, p *coredumpPartial) {
 		img = append(img, p.chunks[n]...)
 	}
 
-	crc := fmt.Sprintf("%08x", crc32.ChecksumIEEE(img))
+	crc := coredumpID(img)
 	if len(img) != p.meta.Size || crc != k.cid {
 		log.Error().
 			Str("device", k.dev).
@@ -287,6 +287,16 @@ func (a *coredumpAssembler) tryComplete(k coredumpKey, p *coredumpPartial) {
 
 	a.saved[k] = true
 	a.ack(k)
+}
+
+// coredumpID è l'id di un'immagine: il CRC-32 senza gli ultimi 4 byte.
+// L'immagine finisce con il CRC-32 del resto, quindi il CRC dell'immagine
+// intera sarebbe sempre 0x2144df1c, lo stesso per ogni core dump.
+func coredumpID(img []byte) string {
+	if len(img) <= 4 {
+		return ""
+	}
+	return fmt.Sprintf("%08x", crc32.ChecksumIEEE(img[:len(img)-4]))
 }
 
 func (a *coredumpAssembler) ack(k coredumpKey) {

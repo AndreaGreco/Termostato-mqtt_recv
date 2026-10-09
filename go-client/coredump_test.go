@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -54,8 +55,11 @@ type testDump struct {
 
 func newTestDump(size, chunkSize int) testDump {
 	img := make([]byte, size)
-	rand.New(rand.NewSource(int64(size))).Read(img)
-	cid := fmt.Sprintf("%08x", crc32.ChecksumIEEE(img))
+	rand.New(rand.NewSource(int64(size))).Read(img[:size-4])
+	// Come in flash: in coda il CRC-32 del resto, little endian
+	body := crc32.ChecksumIEEE(img[:size-4])
+	binary.LittleEndian.PutUint32(img[size-4:], body)
+	cid := fmt.Sprintf("%08x", body)
 
 	d := testDump{dev: "test01", cid: cid, img: img}
 	for off := 0; off < size; off += chunkSize {
@@ -178,6 +182,26 @@ func TestCoredumpMissingChunkExpires(t *testing.T) {
 		d.sendChunk(a, n)
 	}
 	assertSavedOnce(t, saver, acker, d)
+}
+
+func TestCoredumpID(t *testing.T) {
+	a, b := newTestDump(3000, 1024), newTestDump(5000, 1024)
+
+	// Il CRC dell'immagine intera è la costante del CRC-32: non va usato
+	for _, d := range []testDump{a, b} {
+		if got := fmt.Sprintf("%08x", crc32.ChecksumIEEE(d.img)); got != "2144df1c" {
+			t.Errorf("full image crc = %s, want residue 2144df1c", got)
+		}
+	}
+	if coredumpID(a.img) != a.cid || coredumpID(b.img) != b.cid {
+		t.Error("coredumpID differs from the trailing checksum")
+	}
+	if a.cid == b.cid {
+		t.Errorf("two different dumps share id %s", a.cid)
+	}
+	if coredumpID([]byte{1, 2, 3, 4}) != "" {
+		t.Error("image too short must have no id")
+	}
 }
 
 func TestCoredumpVerificationFailures(t *testing.T) {
