@@ -11,7 +11,6 @@ type SampleSt struct {
 	DiagA            int     `json:"diag_a"`
 	DiagB            int     `json:"diag_b"`
 	AmbientSetpoint  float64 `json:"ambient_setpoint"`
-	Power            float64 `json:"power_mw"`
 	HeapFree         int     `json:"heap_free"`
 	HeapLargestBlock int     `json:"heap_largest_block"`
 	BootCount        int     `json:"boot_count"`

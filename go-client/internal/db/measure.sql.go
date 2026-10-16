@@ -22,13 +22,12 @@ INSERT INTO measure (
     "DiagA",
     "DiagB",
     "AmbientSetpoint",
-    "Power",
     "heap_free",
     "heap_largest_block",
     "boot_count",
     "time",
     "device"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type InsertMeasureParams struct {
@@ -41,7 +40,6 @@ type InsertMeasureParams struct {
 	DiagA            int32            `json:"DiagA"`
 	DiagB            int32            `json:"DiagB"`
 	AmbientSetpoint  float64          `json:"AmbientSetpoint"`
-	Power            float64          `json:"Power"`
 	HeapFree         int32            `json:"heap_free"`
 	HeapLargestBlock int32            `json:"heap_largest_block"`
 	BootCount        int32            `json:"boot_count"`
@@ -60,7 +58,6 @@ func (q *Queries) InsertMeasure(ctx context.Context, arg InsertMeasureParams) er
 		arg.DiagA,
 		arg.DiagB,
 		arg.AmbientSetpoint,
-		arg.Power,
 		arg.HeapFree,
 		arg.HeapLargestBlock,
 		arg.BootCount,

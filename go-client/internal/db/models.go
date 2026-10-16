@@ -51,7 +51,6 @@ type Measure struct {
 	DiagA            int32            `json:"DiagA"`
 	DiagB            int32            `json:"DiagB"`
 	AmbientSetpoint  float64          `json:"AmbientSetpoint"`
-	Power            float64          `json:"Power"`
 	HeapFree         int32            `json:"heap_free"`
 	HeapLargestBlock int32            `json:"heap_largest_block"`
 	BootCount        int32            `json:"boot_count"`

@@ -108,7 +108,6 @@ func (d *Database) InsertMeasure(ctx context.Context, device string, sample Samp
 		DiagA:            int32(sample.DiagA),
 		DiagB:            int32(sample.DiagB),
 		AmbientSetpoint:  sample.AmbientSetpoint,
-		Power:            sample.Power,
 		HeapFree:         int32(sample.HeapFree),
 		HeapLargestBlock: int32(sample.HeapLargestBlock),
 		BootCount:        int32(sample.BootCount),

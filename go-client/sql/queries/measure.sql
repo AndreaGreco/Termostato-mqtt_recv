@@ -9,10 +9,9 @@ INSERT INTO measure (
     "DiagA",
     "DiagB",
     "AmbientSetpoint",
-    "Power",
     "heap_free",
     "heap_largest_block",
     "boot_count",
     "time",
     "device"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);

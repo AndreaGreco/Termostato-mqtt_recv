@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS measure (
     "DiagA" INTEGER NOT NULL,
     "DiagB" INTEGER NOT NULL,
     "AmbientSetpoint" DOUBLE PRECISION NOT NULL,
-    "Power" DOUBLE PRECISION NOT NULL,
     "heap_free" INTEGER NOT NULL DEFAULT 0,
     "heap_largest_block" INTEGER NOT NULL DEFAULT 0,
     "boot_count" INTEGER NOT NULL DEFAULT 0,
