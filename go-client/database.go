@@ -172,6 +172,12 @@ func (d *Database) InsertOpenTherm(ctx context.Context, device string, otSample 
 		ChPumpOperationHours:     int32(otSample.ChPumpOperationHours),
 		DhwBurnerStarts:          int32(otSample.DhwBurnerStarts),
 		DhwBurnerOperationHours:  int32(otSample.DhwBurnerOperationHours),
+		ChSetpointMin:            otSample.ChSetpointMin,
+		ChSetpointMax:            otSample.ChSetpointMax,
+		MaxChSetpoint:            otSample.MaxChSetpoint,
+		DhwSetpointMin:           otSample.DhwSetpointMin,
+		DhwSetpointMax:           otSample.DhwSetpointMax,
+		DhwFlowRate:              otSample.DhwFlowRate,
 		Time:                     pgTimestamp,
 		Device:                   device,
 	}

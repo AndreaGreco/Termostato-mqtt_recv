@@ -84,6 +84,12 @@ type Opentherm struct {
 	ChPumpOperationHours     int32            `json:"chPumpOperationHours"`
 	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
 	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
+	ChSetpointMin            *float64         `json:"chSetpointMin"`
+	ChSetpointMax            *float64         `json:"chSetpointMax"`
+	MaxChSetpoint            *float64         `json:"maxChSetpoint"`
+	DhwSetpointMin           *float64         `json:"dhwSetpointMin"`
+	DhwSetpointMax           *float64         `json:"dhwSetpointMax"`
+	DhwFlowRate              *float64         `json:"dhwFlowRate"`
 	Device                   string           `json:"device"`
 	Time                     pgtype.Timestamp `json:"time"`
 }

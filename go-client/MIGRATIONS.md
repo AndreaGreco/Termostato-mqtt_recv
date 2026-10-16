@@ -37,6 +37,7 @@ Questo inizializza la tabella `schema_version` di Tern marcando tutte le migrazi
 9. **009_add_device.sql** - Multi-device: colonna `device` su measure/opentherm/logs (righe storiche = `'legacy'`) e tabella `devices`
 10. **010_add_coredumps.sql** - Tabella `coredumps` (core dump ricevuti via MQTT, file in `coredumpDir`)
 11. **011_drop_power_column.sql** - Rimuove la colonna Power da measure (il firmware non pubblica più `power_mw`)
+12. **012_add_boiler_limits_dhw_flow.sql** - Limiti dichiarati dalla caldaia (mandata, ACS) e portata ACS su opentherm, nullable
 
 ## Esecuzione Automatica
 

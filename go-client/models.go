@@ -48,6 +48,14 @@ type OtDataSt struct {
 	ChPumpOperationHours    int `json:"ch_pump_operation_hours"`
 	DhwBurnerStarts         int `json:"dhw_burner_starts"`
 	DhwBurnerOperationHours int `json:"dhw_burner_operation_hours"`
+	// Limiti dichiarati dalla caldaia e portata ACS: null finche' la caldaia
+	// non risponde, o quando non ha il dato (portata a rubinetti chiusi)
+	ChSetpointMin  *float64 `json:"ch_setpoint_min"`
+	ChSetpointMax  *float64 `json:"ch_setpoint_max"`
+	MaxChSetpoint  *float64 `json:"max_ch_setpoint"`
+	DhwSetpointMin *float64 `json:"dhw_setpoint_min"`
+	DhwSetpointMax *float64 `json:"dhw_setpoint_max"`
+	DhwFlowRate    *float64 `json:"dhw_flow_rate"`
 }
 
 // EspLogSt rappresenta un messaggio di log dell'ESP32

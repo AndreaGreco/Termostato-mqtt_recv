@@ -37,9 +37,15 @@ INSERT INTO opentherm (
     "chPumpOperationHours",
     "dhwBurnerStarts",
     "dhwBurnerOperationHours",
+    "chSetpointMin",
+    "chSetpointMax",
+    "maxChSetpoint",
+    "dhwSetpointMin",
+    "dhwSetpointMax",
+    "dhwFlowRate",
     "time",
     "device"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
 `
 
 type InsertOpenThermParams struct {
@@ -67,6 +73,12 @@ type InsertOpenThermParams struct {
 	ChPumpOperationHours     int32            `json:"chPumpOperationHours"`
 	DhwBurnerStarts          int32            `json:"dhwBurnerStarts"`
 	DhwBurnerOperationHours  int32            `json:"dhwBurnerOperationHours"`
+	ChSetpointMin            *float64         `json:"chSetpointMin"`
+	ChSetpointMax            *float64         `json:"chSetpointMax"`
+	MaxChSetpoint            *float64         `json:"maxChSetpoint"`
+	DhwSetpointMin           *float64         `json:"dhwSetpointMin"`
+	DhwSetpointMax           *float64         `json:"dhwSetpointMax"`
+	DhwFlowRate              *float64         `json:"dhwFlowRate"`
 	Time                     pgtype.Timestamp `json:"time"`
 	Device                   string           `json:"device"`
 }
@@ -97,6 +109,12 @@ func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams
 		arg.ChPumpOperationHours,
 		arg.DhwBurnerStarts,
 		arg.DhwBurnerOperationHours,
+		arg.ChSetpointMin,
+		arg.ChSetpointMax,
+		arg.MaxChSetpoint,
+		arg.DhwSetpointMin,
+		arg.DhwSetpointMax,
+		arg.DhwFlowRate,
 		arg.Time,
 		arg.Device,
 	)

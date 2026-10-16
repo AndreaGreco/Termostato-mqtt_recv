@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS opentherm (
     "chPumpOperationHours" INTEGER NOT NULL DEFAULT 0,
     "dhwBurnerStarts" INTEGER NOT NULL DEFAULT 0,
     "dhwBurnerOperationHours" INTEGER NOT NULL DEFAULT 0,
+    -- Limiti dichiarati dalla caldaia e portata ACS (NULL = non disponibile)
+    "chSetpointMin" DOUBLE PRECISION,
+    "chSetpointMax" DOUBLE PRECISION,
+    "maxChSetpoint" DOUBLE PRECISION,
+    "dhwSetpointMin" DOUBLE PRECISION,
+    "dhwSetpointMax" DOUBLE PRECISION,
+    "dhwFlowRate" DOUBLE PRECISION,
     "device" TEXT NOT NULL,
     "time" TIMESTAMP NOT NULL
 );
