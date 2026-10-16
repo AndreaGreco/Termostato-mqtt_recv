@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS opentherm (
     "dhwSetpointMin" DOUBLE PRECISION,
     "dhwSetpointMax" DOUBLE PRECISION,
     "dhwFlowRate" DOUBLE PRECISION,
+    -- Temperatura esterna dal meteo (Open-Meteo), NULL senza meteo
+    "weatherTemp" DOUBLE PRECISION,
     "device" TEXT NOT NULL,
     "time" TIMESTAMP NOT NULL
 );

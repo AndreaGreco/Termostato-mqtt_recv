@@ -43,9 +43,10 @@ INSERT INTO opentherm (
     "dhwSetpointMin",
     "dhwSetpointMax",
     "dhwFlowRate",
+    "weatherTemp",
     "time",
     "device"
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
 `
 
 type InsertOpenThermParams struct {
@@ -79,6 +80,7 @@ type InsertOpenThermParams struct {
 	DhwSetpointMin           *float64         `json:"dhwSetpointMin"`
 	DhwSetpointMax           *float64         `json:"dhwSetpointMax"`
 	DhwFlowRate              *float64         `json:"dhwFlowRate"`
+	WeatherTemp              *float64         `json:"weatherTemp"`
 	Time                     pgtype.Timestamp `json:"time"`
 	Device                   string           `json:"device"`
 }
@@ -115,6 +117,7 @@ func (q *Queries) InsertOpenTherm(ctx context.Context, arg InsertOpenThermParams
 		arg.DhwSetpointMin,
 		arg.DhwSetpointMax,
 		arg.DhwFlowRate,
+		arg.WeatherTemp,
 		arg.Time,
 		arg.Device,
 	)

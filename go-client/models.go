@@ -56,6 +56,9 @@ type OtDataSt struct {
 	DhwSetpointMin *float64 `json:"dhw_setpoint_min"`
 	DhwSetpointMax *float64 `json:"dhw_setpoint_max"`
 	DhwFlowRate    *float64 `json:"dhw_flow_rate"`
+	// Temperatura esterna dal meteo, quella che usa il modello termico:
+	// null finche' il termostato non ha una previsione
+	WeatherTemp *float64 `json:"weather_temp"`
 }
 
 // EspLogSt rappresenta un messaggio di log dell'ESP32

@@ -90,6 +90,7 @@ type Opentherm struct {
 	DhwSetpointMin           *float64         `json:"dhwSetpointMin"`
 	DhwSetpointMax           *float64         `json:"dhwSetpointMax"`
 	DhwFlowRate              *float64         `json:"dhwFlowRate"`
+	WeatherTemp              *float64         `json:"weatherTemp"`
 	Device                   string           `json:"device"`
 	Time                     pgtype.Timestamp `json:"time"`
 }

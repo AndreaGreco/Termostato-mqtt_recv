@@ -178,6 +178,7 @@ func (d *Database) InsertOpenTherm(ctx context.Context, device string, otSample 
 		DhwSetpointMin:           otSample.DhwSetpointMin,
 		DhwSetpointMax:           otSample.DhwSetpointMax,
 		DhwFlowRate:              otSample.DhwFlowRate,
+		WeatherTemp:              otSample.WeatherTemp,
 		Time:                     pgTimestamp,
 		Device:                   device,
 	}

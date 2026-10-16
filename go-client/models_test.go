@@ -25,3 +25,30 @@ func TestOtDataNullableBoilerFields(t *testing.T) {
 		t.Errorf("dhw bounds = %v-%v, attesi 37-60", ot.DhwSetpointMin, ot.DhwSetpointMax)
 	}
 }
+
+// L'esterna dal meteo e' null senza previsione, e assente dai firmware
+// precedenti: in entrambi i casi nil, non 0 gradi.
+func TestOtDataWeatherTemp(t *testing.T) {
+	cases := []struct {
+		payload string
+		want    *float64
+	}{
+		{`{"timestamp":1,"weather_temp":-2.5}`, ptr(-2.5)},
+		{`{"timestamp":1,"weather_temp":null}`, nil},
+		{`{"timestamp":1}`, nil},
+	}
+	for _, c := range cases {
+		var ot OtDataSt
+		if err := json.Unmarshal([]byte(c.payload), &ot); err != nil {
+			t.Fatal(err)
+		}
+		switch {
+		case c.want == nil && ot.WeatherTemp != nil:
+			t.Errorf("%s: weather_temp = %v, atteso nil", c.payload, *ot.WeatherTemp)
+		case c.want != nil && (ot.WeatherTemp == nil || *ot.WeatherTemp != *c.want):
+			t.Errorf("%s: weather_temp = %v, atteso %v", c.payload, ot.WeatherTemp, *c.want)
+		}
+	}
+}
+
+func ptr(v float64) *float64 { return &v }
